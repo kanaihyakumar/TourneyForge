@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TourneyForge - Match Bracket</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #e4e9f2;
+    --bg-deep: #e4e9f2;
+    --shadow-light: #ffffff;
+    --shadow-dark: #a9b4c4;
+    --text: #22283a;
+    --text-soft: #4b5468;
+    --accent: #4f52d6;
+    --accent-dark: #3638a8;
+    --accent-contrast: #ffffff;
+    --danger: #c0392b;
+    --success: #1f8a52;
+    --radius-lg: 22px;
+    --radius-md: 16px;
+    --radius-sm: 10px;
+  }
+
+  *{ box-sizing: border-box; }
+
+  html,body{
+    margin:0;
+    padding:0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Nunito', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body{
+    min-height:100vh;
+    padding: clamp(16px, 4vw, 40px);
+  }
+
+  .wrap{
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  /* ---------- Header ---------- */
+  header.app-header{
+    display:flex;
+    align-items:center;
+    gap:16px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+  }
+
+  .logo-badge{
+    width:56px; height:56px;
+    border-radius: 18px;
+    background: var(--bg);
+    display:flex; align-items:center; justify-content:center;
+    font-size:26px;
+    box-shadow: 8px 8px 16px var(--shadow-dark), -8px -8px 16px var(--shadow-light);
+    flex-shrink:0;
+  }
+
+  header.app-header h1{
+    margin:0;
+    font-size: clamp(1.4rem, 2.6vw, 1.9rem);
+    font-weight: 900;
+    letter-spacing: -0.5px;
+  }
+
+  header.app-header p{
+    margin: 2px 0 0;
+    color: var(--text-soft);
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  /* ---------- Neumorphic primitives ---------- */
+  .card{
+    background: var(--bg);
+    border-radius: var(--radius-lg);
+    box-shadow: 9px 9px 18px var(--shadow-dark), -9px -9px 18px var(--shadow-light);
+    padding: clamp(18px, 3vw, 28px);
+    margin-bottom: 24px;
+  }
+
+  .card h2{
+    margin: 0 0 4px;
+    font-size: 1.15rem;
+    font-weight: 800;
+  }
+
+  .card .hint{
+    margin: 0 0 18px;
+    color: var(--text-soft);
+    font-size: 0.88rem;
+    font-weight: 600;
+  }
+
+  .section-icon{
+    display:inline-flex;
+    width:30px; height:30px;
+    border-radius: 10px;
+    align-items:center; justify-content:center;
+    margin-right:8px;
+    font-size: 15px;
+    box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
+    vertical-align: middle;
+  }
+
+  label{
+    display:block;
+    font-weight: 800;
+    font-size: 0.85rem;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+
+  input[type="text"]{
+    width:100%;
+    border:none;
+    outline:none;
+    background: transparent;
+    font-family: inherit;
+    font-size: 0.98rem;
+    font-weight: 600;
+    color: var(--text);
+    padding: 13px 16px;
+    border-radius: var(--radius-md);
+  }
+
+  .inset-field{
+    border-radius: var(--radius-md);
+    box-shadow: inset 5px 5px 10px var(--shadow-dark), inset -5px -5px 10px var(--shadow-light);
+    background: var(--bg);
+  }
+
+  input:focus-visible,
+  button:focus-visible{
+    outline: 3px solid var(--accent-dark);
+    outline-offset: 2px;
+  }
+
+  ::placeholder{ color: #7c879b; font-weight: 600; }
+
+  /* ---------- Buttons ---------- */
+  .btn{
+    appearance:none;
+    border:none;
+    cursor:pointer;
+    font-family:inherit;
+    font-weight: 800;
+    font-size: 0.92rem;
+    padding: 13px 22px;
+    border-radius: var(--radius-md);
+    background: var(--bg);
+    color: var(--text);
+    box-shadow: 6px 6px 12px var(--shadow-dark), -6px -6px 12px var(--shadow-light);
+    transition: box-shadow .12s ease, transform .12s ease, color .12s ease;
+    display:inline-flex; align-items:center; gap:8px;
+    justify-content:center;
+  }
+  .btn:hover{ box-shadow: 4px 4px 8px var(--shadow-dark), -4px -4px 8px var(--shadow-light); }
+  .btn:active, .btn.is-active{
+    box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
+    transform: translateY(1px);
+  }
+
+  .btn-primary{
+    background: var(--accent);
+    color: var(--accent-contrast);
+    box-shadow: 6px 6px 14px #b9bce8, -6px -6px 14px #ffffff;
+  }
+  .btn-primary:hover{ background: var(--accent-dark); }
+  .btn-primary:active{
+    box-shadow: inset 4px 4px 8px #2d2fa0, inset -4px -4px 8px #6264f0;
+  }
+
+  .btn-block{ width:100%; }
+  .btn-sm{ padding: 9px 14px; font-size: 0.82rem; }
+
+  .btn-row{
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-top: 18px;
+  }
+
+  /* ---------- Member chips ---------- */
+  .add-member-row{
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  .add-member-row .inset-field{ flex:1 1 220px; }
+
+  .member-count{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: var(--text-soft);
+    margin-top: 16px;
+    margin-bottom: 10px;
+  }
+  .member-count .dot{
+    width:8px; height:8px; border-radius:50%;
+    background: var(--accent);
+  }
+
+  .chip-list{
+    list-style:none;
+    margin:0; padding:0;
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+
+  .chip{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding: 8px 8px 8px 16px;
+    border-radius: 999px;
+    background: var(--bg);
+    box-shadow: 4px 4px 8px var(--shadow-dark), -4px -4px 8px var(--shadow-light);
+    font-weight: 700;
+    font-size: 0.88rem;
+  }
+
+  .chip button{
+    appearance:none;
+    border:none;
+    background: var(--bg);
+    width: 24px; height:24px;
+    border-radius:50%;
+    cursor:pointer;
+    color: var(--danger);
+    font-weight:900;
+    box-shadow: inset 2px 2px 4px var(--shadow-dark), inset -2px -2px 4px var(--shadow-light);
+    line-height:1;
+    display:flex; align-items:center; justify-content:center;
+    font-size: 13px;
+  }
+  .chip button:hover{ color:#fff; background: var(--danger); box-shadow:none; }
+
+  .empty-note{
+    color: var(--text-soft);
+    font-weight: 700;
+    font-size: 0.88rem;
+    padding: 10px 2px;
+  }
+
+  .field-note{
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: var(--accent-dark);
+    margin: 6px 2px 0;
+  }
+
+  /* ---------- Validation / status banner ---------- */
+  .status-banner{
+    border-radius: var(--radius-md);
+    padding: 14px 18px;
+    font-weight: 700;
+    font-size: 0.92rem;
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    margin-top: 18px;
+    box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
+  }
+  .status-banner.warn{ color: var(--danger); }
+  .status-banner.ok{ color: var(--success); }
+  .status-banner .icon{ font-size: 1.1rem; flex-shrink:0; }
+
+  /* ---------- Credit line ---------- */
+  .credit-line{
+    text-align:center;
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: var(--text-soft);
+    margin: -14px 0 24px;
+  }
+  .credit-line .heart{ color: var(--danger); }
+  .credit-line .handle{ color: var(--accent-dark); }
+
+  /* ---------- Toast ---------- */
+  #toast{
+    position: fixed;
+    left:50%;
+    bottom: 26px;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--accent);
+    color: #fff;
+    font-weight: 800;
+    font-size: 0.9rem;
+    padding: 12px 22px;
+    border-radius: 999px;
+    box-shadow: 0 10px 24px rgba(79,82,214,0.4);
+    opacity: 0;
+    pointer-events:none;
+    transition: opacity .2s ease, transform .2s ease;
+    z-index: 50;
+  }
+  #toast.show{
+    opacity:1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  footer.note{
+    text-align:center;
+    color: var(--text-soft);
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-top: 10px;
+    padding-bottom: 20px;
+  }
+
+  .visually-hidden{
+    position:absolute; width:1px;height:1px;
+    overflow:hidden; clip:rect(0 0 0 0);
+    white-space:nowrap;
+  }
+
+  @media (max-width: 420px){
+    .btn-row{ flex-direction:column; }
+    .btn-row .btn{ width:100%; }
+  }
+
+  /* ---------- Match Bracket ---------- */
+  .bracket-intro{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:14px;
+    margin-bottom: 18px;
+  }
+  .bracket-toggle{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-weight:700;
+    font-size: 0.86rem;
+    color: var(--text-soft);
+  }
+  .bracket-toggle input{ width:auto; accent-color: var(--accent); }
+
+  .bracket-stage{
+    margin-bottom: 22px;
+  }
+  .bracket-stage-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-bottom: 12px;
+  }
+  .bracket-stage-head h3{
+    margin:0;
+    font-size: 1rem;
+    font-weight: 900;
+  }
+  .bracket-stage-head .stage-actions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+
+  .match-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 14px;
+  }
+
+  .match-card{
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    background: var(--bg);
+    box-shadow: 6px 6px 12px var(--shadow-dark), -6px -6px 12px var(--shadow-light);
+  }
+  .match-card .match-label{
+    font-size: 0.72rem;
+    font-weight:800;
+    color: var(--text-soft);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+  .match-card .match-players{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+
+  .player-pick{
+    appearance:none;
+    border:none;
+    cursor:pointer;
+    width:100%;
+    text-align:left;
+    font-family:inherit;
+    font-weight: 800;
+    font-size: 0.92rem;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    color: var(--text);
+    box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    transition: box-shadow .12s ease, color .12s ease;
+  }
+  .player-pick:hover{
+    box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
+  }
+  .player-pick.is-winner{
+    color: #fff;
+    background: var(--success);
+    box-shadow: 4px 4px 10px rgba(31,138,82,0.35);
+  }
+  .player-pick.is-loser{
+    opacity: 0.5;
+  }
+  .player-pick .win-badge{
+    font-size: 0.7rem;
+    font-weight:900;
+  }
+
+  .bye-note{
+    font-size: 0.82rem;
+    font-weight:800;
+    color: var(--accent-dark);
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
+  }
+
+  .podium{
+    border-radius: var(--radius-lg);
+    padding: 22px;
+    background: var(--bg);
+    box-shadow: 9px 9px 18px var(--shadow-dark), -9px -9px 18px var(--shadow-light);
+    margin-top: 10px;
+  }
+  .podium h3{
+    margin:0 0 14px;
+    font-size: 1.1rem;
+    font-weight:900;
+    text-align:center;
+  }
+  .podium-row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
+    margin-bottom: 10px;
+    font-weight:800;
+  }
+  .podium-row .medal{ font-size: 1.3rem; }
+  .podium-row .place-label{
+    font-size: 0.74rem;
+    color: var(--text-soft);
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="app-header">
+    <a class="logo-badge" href="index.html" aria-hidden="true" style="text-decoration:none;">🏆</a>
+    <div>
+      <h1>TourneyForge</h1>
+      <p>Add members, then build a knockout Match Bracket.</p>
+    </div>
+    <div style="flex:1;"></div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <a class="btn btn-sm" href="index.html">🏠 Home</a>
+      <a class="btn btn-sm" href="dashboard.html">🛠️ Dashboard</a>
+    </div>
+  </header>
+
+  <p class="credit-line">Made with <span class="heart">❤️</span> by <span class="handle">Speedy</span> (platoid: Speedy40)</p>
+
+  <!-- TOURNAMENT IMPORT BANNER -->
+  <div id="forgeImportBanner" class="status-banner ok" style="display:none; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;">
+    <span><span class="icon">🎯</span><span id="forgeImportText"></span></span>
+    <span id="forgeSyncStatus" style="font-size:0.78rem; font-weight:800; color:var(--text-soft);"></span>
+    <button type="button" class="btn btn-sm" id="forgeImportClearBtn">Exit tournament mode</button>
+  </div>
+
+  <!-- MEMBERS -->
+  <section class="card" aria-labelledby="members-heading">
+    <h2 id="members-heading"><span class="section-icon" aria-hidden="true">👥</span>Members</h2>
+    <p class="hint">Add everyone taking part in this tournament.</p>
+
+    <form id="addMemberForm" class="add-member-row">
+      <div class="inset-field">
+        <label for="memberInput" class="visually-hidden">Member name</label>
+        <input type="text" id="memberInput" placeholder="e.g. Speedy" autocomplete="off">
+      </div>
+      <button type="submit" class="btn btn-primary">+ Add Member</button>
+    </form>
+
+    <div class="member-count" id="memberCount" aria-live="polite">
+      <span class="dot" aria-hidden="true"></span><span id="memberCountText">8 members added</span>
+    </div>
+
+    <ul class="chip-list" id="memberList" aria-label="Current members"></ul>
+  </section>
+
+  <!-- MATCH BRACKET -->
+  <section class="card" id="bracketSection" aria-labelledby="bracket-heading">
+    <h2 id="bracket-heading" style="margin:0 0 4px;"><span class="section-icon" aria-hidden="true">🏆</span>Match Bracket</h2>
+    <p class="hint">Turn your member list into a knockout bracket - pick winners each match, then generate the next match set. Works best with Members added above.</p>
+
+    <div class="bracket-intro">
+      <label class="bracket-toggle">
+        <input type="checkbox" id="thirdPlaceToggle" checked>
+        Also generate a 3rd place match (from the two semifinal losers)
+      </label>
+      <div class="btn-row" style="margin:0;">
+        <button type="button" class="btn btn-primary" id="startBracketBtn">🏆 Start Bracket from Members</button>
+        <button type="button" class="btn" id="resetBracketBtn" hidden>🔁 Reset Bracket</button>
+      </div>
+    </div>
+
+    <p class="empty-note" id="bracketEmptyNote">No bracket yet - add members above, then click "Start Bracket" to generate your first match set.</p>
+
+    <div id="bracketStages"></div>
+    <div id="podiumArea"></div>
+  </section>
+
+  <footer class="note">
+    Made with ❤️ by <strong>Speedy</strong> (platoid: Speedy40)
+  </footer>
+</div>
+
+<div id="toast" role="status"></div>
+
+<script type="module">
+import { TF } from "./shared.js";
+(function(){
+  "use strict";
+
+  // ---------- State ----------
+  var forgeImport = null;
+  try{
+    var fiRaw = localStorage.getItem('tf_forge_import');
+    if(fiRaw) forgeImport = JSON.parse(fiRaw);
+  }catch(e){ forgeImport = null; }
+
+  var tournamentId = forgeImport && forgeImport.tournamentId ? forgeImport.tournamentId : null;
+  var session = TF.getSession();
+
+  var members = (forgeImport && forgeImport.members && forgeImport.members.length
+    ? forgeImport.members
+    : ["Speedy1", "Speedy2", "Speedy3", "Speedy4", "Speedy5", "Speedy6", "Speedy7", "Speedy8"]
+  ).map(makeMember);
+
+  // ---------- Elements ----------
+  var memberList = document.getElementById('memberList');
+  var memberCountText = document.getElementById('memberCountText');
+  var addMemberForm = document.getElementById('addMemberForm');
+  var memberInput = document.getElementById('memberInput');
+  var toast = document.getElementById('toast');
+
+  var idCounter = 0;
+  function makeMember(name){
+    idCounter++;
+    return { id: 'm' + idCounter, name: name };
+  }
+
+  // ---------- Members ----------
+  function renderMembers(){
+    memberList.innerHTML = '';
+    if(members.length === 0){
+      var li = document.createElement('li');
+      li.className = 'empty-note';
+      li.textContent = 'No members yet - add your first participant above.';
+      memberList.appendChild(li);
+    } else {
+      members.forEach(function(m){
+        var li = document.createElement('li');
+        li.className = 'chip';
+        var span = document.createElement('span');
+        span.textContent = TF.formatPlatoId(m.name);
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.setAttribute('aria-label', 'Remove ' + m.name);
+        btn.textContent = '×';
+        btn.addEventListener('click', function(){
+          members = members.filter(function(x){ return x.id !== m.id; });
+          renderMembers();
+          persistForgeState();
+        });
+        li.appendChild(span);
+        li.appendChild(btn);
+        memberList.appendChild(li);
+      });
+    }
+    memberCountText.textContent = members.length + (members.length === 1 ? ' member added' : ' members added');
+  }
+
+  addMemberForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    var name = memberInput.value.trim();
+    if(!name) return;
+    members.push(makeMember(name));
+    memberInput.value = '';
+    memberInput.focus();
+    renderMembers();
+    persistForgeState();
+  });
+
+  // ---------- Shuffle ----------
+  function shuffle(arr){
+    var a = arr.slice();
+    for(var i = a.length - 1; i > 0; i--){
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+    }
+    return a;
+  }
+
+  // ---------- Clipboard ----------
+  function copyToClipboard(text){
+    function success(){ showToast('Copied to clipboard!'); }
+    function fail(){
+      try{
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast('Copied to clipboard!');
+      }catch(err){
+        showToast('Copy failed - please copy manually.');
+      }
+    }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(success).catch(fail);
+    } else {
+      fail();
+    }
+  }
+
+  var toastTimer = null;
+  function showToast(msg){
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ toast.classList.remove('show'); }, 2200);
+  }
+
+  // ---------- Tournament import banner ----------
+  if(forgeImport){
+    var forgeImportBanner = document.getElementById('forgeImportBanner');
+    var forgeImportText = document.getElementById('forgeImportText');
+    var forgeImportClearBtn = document.getElementById('forgeImportClearBtn');
+    forgeImportBanner.style.display = 'flex';
+    forgeImportText.textContent = 'Building the bracket for "' + forgeImport.title + '" - ' +
+      (forgeImport.members || []).length + ' registered player(s) loaded below.';
+    forgeImportClearBtn.addEventListener('click', function(){
+      try{ localStorage.removeItem('tf_forge_import'); }catch(e){}
+      location.reload();
+    });
+  }
+
+  // ---------- Match Bracket ----------
+  var startBracketBtn = document.getElementById('startBracketBtn');
+  var resetBracketBtn = document.getElementById('resetBracketBtn');
+  var thirdPlaceToggle = document.getElementById('thirdPlaceToggle');
+  var bracketEmptyNote = document.getElementById('bracketEmptyNote');
+  var bracketStagesEl = document.getElementById('bracketStages');
+  var podiumArea = document.getElementById('podiumArea');
+
+  // Each stage: { label, matches: [{ p1, p2, winner }], isThirdPlace }
+  // A match with p2 === null is a bye - p1 auto-advances.
+  var bracketStages = [];
+  var champion = null, runnerUp = null, thirdPlace = null, fourthPlace = null;
+
+  function pairUp(names){
+    var shuffled = shuffle(names.map(function(n){ return { name: n }; }));
+    var matches = [];
+    for(var i = 0; i < shuffled.length; i += 2){
+      var p1 = shuffled[i];
+      var p2 = shuffled[i + 1] || null; // odd one out gets a bye
+      matches.push({ p1: p1, p2: p2, winner: p2 ? null : p1 });
+    }
+    return matches;
+  }
+
+  function stageLabel(matchCount){
+    return matchCount === 1 ? 'Final Match' : (matchCount + ' Match');
+  }
+
+  function startBracket(){
+    var names = members.map(function(m){ return m.name; });
+    if(names.length < 2){
+      showToast('Add at least 2 members before starting a bracket.');
+      return;
+    }
+    bracketStages = [{ label: stageLabel(Math.ceil(names.length / 2)), matches: pairUp(names) }];
+    champion = null; runnerUp = null; thirdPlace = null; fourthPlace = null;
+    startBracketBtn.hidden = true;
+    resetBracketBtn.hidden = false;
+    thirdPlaceToggle.disabled = true;
+    renderBracket();
+    persistForgeState();
+    showToast('Bracket created! Your first match set is saved.');
+  }
+
+  function resetBracket(){
+    if(!confirm('Reset the whole bracket? This clears all picked winners.')) return;
+    bracketStages = [];
+    champion = null; runnerUp = null; thirdPlace = null; fourthPlace = null;
+    startBracketBtn.hidden = false;
+    resetBracketBtn.hidden = true;
+    thirdPlaceToggle.disabled = false;
+    renderBracket();
+    persistForgeState();
+  }
+
+  // Re-randomizes the pairings of the current (latest, not-yet-advanced-past)
+  // match set - same idea as the old "Regenerate (reshuffle)" for groups, but
+  // scoped to whichever stage is currently in progress. If any winners were
+  // already picked in that stage, they're cleared and the player confirms first.
+  function reshuffleCurrentStage(){
+    var stage = bracketStages[bracketStages.length - 1];
+    if(!stage) return;
+    var hasPicks = stage.matches.some(function(m){ return m.winner && m.p2; });
+    if(hasPicks){
+      var ok = confirm('Reshuffling will clear any winners already picked in this match set. Continue?');
+      if(!ok) return;
+    }
+    var names = [];
+    stage.matches.forEach(function(m){
+      names.push(m.p1.name);
+      if(m.p2) names.push(m.p2.name);
+    });
+    stage.matches = pairUp(names);
+    renderBracket();
+    persistForgeState();
+    showToast('Match set reshuffled!');
+  }
+
+  function stageWinners(stage){
+    return stage.matches.map(function(m){ return m.winner; }).filter(Boolean);
+  }
+
+  function stageIsComplete(stage){
+    return stage.matches.every(function(m){ return m.winner; });
+  }
+
+  function pickWinner(stage, match, picked){
+    match.winner = picked;
+    renderBracket();
+    persistForgeState();
+  }
+
+  function advanceStage(){
+    var lastStage = bracketStages[bracketStages.length - 1];
+    if(!lastStage || !stageIsComplete(lastStage)) return;
+    var winners = stageWinners(lastStage).map(function(p){ return p.name; });
+
+    // When exactly 2 winners remain, this upcoming stage IS the final (1 match).
+    // If a 3rd place match is wanted, generate it alongside using the losers of
+    // the semifinal stage (the one that produced these 2 finalists).
+    if(winners.length === 2 && thirdPlaceToggle.checked && !bracketStages.some(function(s){ return s.isThirdPlace; })){
+      var losers = lastStage.matches
+        .filter(function(m){ return m.p2; }) // only real matches have a loser
+        .map(function(m){ return m.winner === m.p1 ? m.p2 : m.p1; });
+      if(losers.length === 2){
+        bracketStages.push({ label: '3rd Place Match', matches: pairUp(losers.map(function(p){ return p.name; })), isThirdPlace: true });
+      }
+    }
+
+    bracketStages.push({ label: stageLabel(Math.ceil(winners.length / 2)), matches: pairUp(winners) });
+    renderBracket();
+    persistForgeState();
+  }
+
+  function finalizeIfDone(){
+    var finalStage = bracketStages.filter(function(s){ return !s.isThirdPlace && s.matches.length === 1; })[0];
+    var thirdStage = bracketStages.filter(function(s){ return s.isThirdPlace; })[0];
+
+    champion = null; runnerUp = null; thirdPlace = null; fourthPlace = null;
+
+    if(finalStage && finalStage.matches[0].winner){
+      var fm = finalStage.matches[0];
+      champion = fm.winner;
+      runnerUp = fm.winner === fm.p1 ? fm.p2 : fm.p1;
+    }
+    if(thirdStage && thirdStage.matches[0] && thirdStage.matches[0].winner){
+      var tm = thirdStage.matches[0];
+      thirdPlace = tm.winner;
+      fourthPlace = tm.winner === tm.p1 ? tm.p2 : tm.p1;
+    }
+  }
+
+  function matchText(stage, match, idx){
+    var p1 = match.p1 ? TF.formatPlatoId(match.p1.name) : '?';
+    var p2 = match.p2 ? TF.formatPlatoId(match.p2.name) : null;
+    if(!p2) return 'Match ' + (idx + 1) + ': ' + p1 + ' - BYE (auto-advances)';
+    var winText = match.winner ? (' -> Winner: ' + TF.formatPlatoId(match.winner.name)) : '';
+    return 'Match ' + (idx + 1) + ': ' + p1 + ' vs ' + p2 + winText;
+  }
+
+  function stageText(stage){
+    return stage.label + '\n' + stage.matches.map(function(m, idx){ return matchText(stage, m, idx); }).join('\n');
+  }
+
+  function renderBracket(){
+    // Compute champion/runner-up/etc. first so the reshuffle button and
+    // "next match set" controls below reflect the latest pick immediately,
+    // not a stale value from before this render.
+    finalizeIfDone();
+
+    bracketEmptyNote.hidden = bracketStages.length > 0;
+    bracketStagesEl.innerHTML = '';
+
+    bracketStages.forEach(function(stage, stageIdx){
+      var isLastStage = stageIdx === bracketStages.length - 1;
+      var wrap = document.createElement('div');
+      wrap.className = 'bracket-stage';
+
+      var head = document.createElement('div');
+      head.className = 'bracket-stage-head';
+      var h3 = document.createElement('h3');
+      h3.textContent = (stage.isThirdPlace ? '🥉 ' : '🏆 ') + stage.label;
+      var actions = document.createElement('div');
+      actions.className = 'stage-actions';
+      var copyBtn = document.createElement('button');
+      copyBtn.type = 'button';
+      copyBtn.className = 'btn btn-sm';
+      copyBtn.textContent = '📋 Copy this match set';
+      copyBtn.addEventListener('click', function(){ copyToClipboard(stageText(stage)); });
+      actions.appendChild(copyBtn);
+      if(isLastStage && !champion){
+        var reshuffleBtn = document.createElement('button');
+        reshuffleBtn.type = 'button';
+        reshuffleBtn.className = 'btn btn-sm';
+        reshuffleBtn.textContent = '🔀 Reshuffle';
+        reshuffleBtn.addEventListener('click', reshuffleCurrentStage);
+        actions.appendChild(reshuffleBtn);
+      }
+      head.appendChild(h3);
+      head.appendChild(actions);
+      wrap.appendChild(head);
+
+      var grid = document.createElement('div');
+      grid.className = 'match-grid';
+
+      stage.matches.forEach(function(match, idx){
+        var card = document.createElement('div');
+        card.className = 'match-card';
+
+        var label = document.createElement('div');
+        label.className = 'match-label';
+        label.textContent = 'Match ' + (idx + 1);
+        card.appendChild(label);
+
+        if(!match.p2){
+          var bye = document.createElement('div');
+          bye.className = 'bye-note';
+          bye.textContent = '🎟️ ' + TF.formatPlatoId(match.p1.name) + ' gets a BYE - advances automatically';
+          card.appendChild(bye);
+        } else {
+          var playersWrap = document.createElement('div');
+          playersWrap.className = 'match-players';
+          [match.p1, match.p2].forEach(function(p){
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'player-pick';
+            if(match.winner){
+              btn.classList.add(match.winner === p ? 'is-winner' : 'is-loser');
+            }
+            var nameSpan = document.createElement('span');
+            nameSpan.textContent = TF.formatPlatoId(p.name);
+            btn.appendChild(nameSpan);
+            if(match.winner === p){
+              var badge = document.createElement('span');
+              badge.className = 'win-badge';
+              badge.textContent = '✅ WINNER';
+              btn.appendChild(badge);
+            }
+            btn.addEventListener('click', function(){ pickWinner(stage, match, p); });
+            playersWrap.appendChild(btn);
+          });
+          card.appendChild(playersWrap);
+        }
+
+        grid.appendChild(card);
+      });
+
+      wrap.appendChild(grid);
+      bracketStagesEl.appendChild(wrap);
+    });
+
+    renderPodium();
+
+    // Show "generate next stage" controls under the most recent stage, unless
+    // the tournament has already concluded (final decided).
+    var lastStage = bracketStages[bracketStages.length - 1];
+    if(lastStage && !champion){
+      var winners = stageIsComplete(lastStage) ? stageWinners(lastStage) : [];
+      var actionRow = document.createElement('div');
+      actionRow.className = 'btn-row';
+      if(stageIsComplete(lastStage) && winners.length > 1){
+        var nextBtn = document.createElement('button');
+        nextBtn.type = 'button';
+        nextBtn.className = 'btn btn-primary';
+        nextBtn.textContent = '▶ Generate Next Match Set (' + stageLabel(Math.ceil(winners.length / 2)) + ')';
+        nextBtn.addEventListener('click', advanceStage);
+        actionRow.appendChild(nextBtn);
+      } else if(!stageIsComplete(lastStage)){
+        var hint = document.createElement('p');
+        hint.className = 'field-note';
+        hint.textContent = '👆 Pick a winner for every match above to unlock the next match set.';
+        bracketStagesEl.appendChild(hint);
+      }
+      if(actionRow.children.length) bracketStagesEl.appendChild(actionRow);
+    }
+  }
+
+  function renderPodium(){
+    podiumArea.innerHTML = '';
+    if(!champion) return;
+
+    var box = document.createElement('div');
+    box.className = 'podium';
+
+    var h3 = document.createElement('h3');
+    h3.textContent = '🎉 Tournament Results';
+    box.appendChild(h3);
+
+    var rows = [
+      { medal: '🥇', label: '1st Place', name: TF.formatPlatoId(champion.name) },
+      { medal: '🥈', label: '2nd Place', name: runnerUp ? TF.formatPlatoId(runnerUp.name) : '?' }
+    ];
+    if(thirdPlace){
+      rows.push({ medal: '🥉', label: '3rd Place', name: TF.formatPlatoId(thirdPlace.name) });
+      if(fourthPlace) rows.push({ medal: '4️⃣', label: '4th Place', name: TF.formatPlatoId(fourthPlace.name) });
+    }
+
+    rows.forEach(function(r){
+      var row = document.createElement('div');
+      row.className = 'podium-row';
+      row.innerHTML = '<span class="medal">' + r.medal + '</span><span>' + r.name +
+        '</span><span class="place-label" style="margin-left:auto;">' + r.label + '</span>';
+      box.appendChild(row);
+    });
+
+    var copyBtn = document.createElement('button');
+    copyBtn.type = 'button';
+    copyBtn.className = 'btn btn-sm';
+    copyBtn.style.marginTop = '10px';
+    copyBtn.textContent = '📋 Copy Results';
+    copyBtn.addEventListener('click', function(){
+      var text = '🎉 Tournament Results\n' + rows.map(function(r){ return r.medal + ' ' + r.label + ': ' + r.name; }).join('\n');
+      copyToClipboard(text);
+    });
+    box.appendChild(copyBtn);
+
+    podiumArea.appendChild(box);
+  }
+
+  startBracketBtn.addEventListener('click', startBracket);
+  resetBracketBtn.addEventListener('click', resetBracket);
+  renderBracket();
+
+  // ---------- Firestore persistence (tournament-linked sessions only) ----------
+  var forgeSyncStatus = document.getElementById('forgeSyncStatus');
+  var isRestoring = false; // guards against re-saving while we're still loading saved state
+  var saveSeq = 0; // bumped on every save - lets us ignore stale in-flight responses
+  var pendingSaves = 0; // count of saves still in flight, used to warn before leaving the page
+
+  function setSyncStatus(text){
+    if(!forgeSyncStatus) return;
+    forgeSyncStatus.textContent = text;
+    forgeSyncStatus.style.color = text.indexOf('⚠️') === 0 ? 'var(--danger)' : 'var(--text-soft)';
+  }
+
+  function serializeState(){
+    return {
+      members: members.map(function(m){ return m.name; }),
+      bracket: bracketStages.length ? {
+        thirdPlaceEnabled: thirdPlaceToggle.checked,
+        stages: bracketStages.map(function(s){
+          return {
+            label: s.label,
+            isThirdPlace: !!s.isThirdPlace,
+            matches: s.matches.map(function(m){
+              return {
+                p1Name: m.p1 ? m.p1.name : null,
+                p2Name: m.p2 ? m.p2.name : null,
+                winnerName: m.winner ? m.winner.name : null
+              };
+            })
+          };
+        })
+      } : null
+    };
+  }
+
+  // Saves immediately (no artificial delay) so a quick refresh right after an
+  // action can't outrun the write. A sequence number guards against an older,
+  // slower save overwriting the status text after a newer one already landed,
+  // and `pendingSaves` is used to warn the user before they navigate away
+  // while a save is still in flight.
+  function persistForgeState(){
+    if(!tournamentId || isRestoring) return;
+    var mySeq = ++saveSeq;
+    pendingSaves++;
+    setSyncStatus('💾 Saving…');
+    TF.saveForgeState(tournamentId, serializeState(), session).then(function(ok){
+      pendingSaves--;
+      if(mySeq !== saveSeq) return;
+      setSyncStatus(ok ? '☁️ Saved to tournament' : '⚠️ Not saved - check permissions');
+      if(!ok) showToast('⚠️ Could not save - you may not have permission to edit this tournament.');
+    }).catch(function(err){
+      pendingSaves--;
+      if(mySeq === saveSeq) setSyncStatus('⚠️ Could not save - check connection');
+      showToast('⚠️ Could not save your changes - check your connection and try again.');
+      console.error(err);
+    });
+  }
+
+  window.addEventListener('beforeunload', function(e){
+    if(pendingSaves > 0){
+      e.preventDefault();
+      e.returnValue = ''; // required by Chrome to show the "leave site?" confirmation
+    }
+  });
+
+  function restoreFromState(state){
+    isRestoring = true;
+    try{
+      if(state.members && state.members.length){
+        members = state.members.map(makeMember);
+        renderMembers();
+      }
+
+      if(state.bracket && state.bracket.stages && state.bracket.stages.length){
+        thirdPlaceToggle.checked = !!state.bracket.thirdPlaceEnabled;
+        bracketStages = state.bracket.stages.map(function(s){
+          return {
+            label: s.label,
+            isThirdPlace: s.isThirdPlace,
+            matches: s.matches.map(function(m){
+              var p1 = m.p1Name ? { name: m.p1Name } : null;
+              var p2 = m.p2Name ? { name: m.p2Name } : null;
+              var winner = null;
+              if(m.winnerName){
+                if(p1 && p1.name === m.winnerName) winner = p1;
+                else if(p2 && p2.name === m.winnerName) winner = p2;
+              }
+              return { p1: p1, p2: p2, winner: winner };
+            })
+          };
+        });
+        startBracketBtn.hidden = true;
+        resetBracketBtn.hidden = false;
+        thirdPlaceToggle.disabled = true;
+        renderBracket();
+      }
+    } finally {
+      isRestoring = false;
+    }
+  }
+
+  // ---------- Init ----------
+  renderMembers();
+
+  if(tournamentId){
+    setSyncStatus('☁️ Loading saved bracket…');
+    TF.getForgeState(tournamentId).then(function(state){
+      if(state){
+        restoreFromState(state);
+        setSyncStatus('☁️ Loaded saved bracket from this tournament');
+      } else {
+        setSyncStatus('☁️ Auto-saving to this tournament');
+      }
+    }).catch(function(err){
+      setSyncStatus('⚠️ Could not load saved bracket - check connection.');
+      console.error(err);
+    });
+  }
+
+})();
+</script>
+
+</body>
+</html>

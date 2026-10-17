@@ -1,0 +1,29 @@
+rules_version = '2';
+
+// TourneyForge - Firestore rules.
+//
+// NOTE: This app currently uses a simple custom username/password check done
+// in client JS (no Firebase Authentication), so there is no server-verified
+// identity Firestore rules can check against. These rules are intentionally
+// open (same trust level as the old localStorage version, just now shared
+// across devices). Anyone with devtools could, in theory, write directly to
+// the database bypassing the app's UI checks - acceptable for a small
+// private/friends app. If this ever needs real protection, switch the admin
+// & organizer login over to Firebase Authentication and tighten these rules
+// to check request.auth.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /tournaments/{tournamentId} {
+      allow read: if true;
+      allow write: if true;
+    }
+    match /organizers/{organizerId} {
+      allow read: if true;
+      allow write: if true;
+    }
+    match /config/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}

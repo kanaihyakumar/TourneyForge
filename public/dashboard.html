@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TourneyForge - Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+
+<div class="wrap">
+  <div id="siteHeader"></div>
+
+  <div id="guardedOut" class="card" hidden>
+    <h2>🔒 Sign in required</h2>
+    <p class="hint">This dashboard is for admins &amp; organizers only. Sign in from the button above.</p>
+  </div>
+
+  <div id="dashboardContent" hidden>
+    <div class="tab-row" role="tablist">
+      <button type="button" class="tab-btn is-active" id="tabTournamentsBtn" role="tab">🏆 Tournaments</button>
+      <button type="button" class="tab-btn" id="tabOrganizersBtn" role="tab" hidden>🧑‍💼 Organizers</button>
+    </div>
+
+    <!-- TOURNAMENTS TAB -->
+    <section id="tournamentsPanel">
+      <section class="card">
+        <div class="panel-head">
+          <div>
+            <h2 style="margin:0;"><span class="section-icon" aria-hidden="true">➕</span>Create a Tournament</h2>
+            <p class="hint" style="margin:4px 0 0;">Write it up, pick the time, and it'll show on the home page instantly.</p>
+          </div>
+        </div>
+        <form id="tourForm">
+          <input type="hidden" id="tourEditId">
+          <div class="form-grid">
+            <div class="span-2">
+              <label for="tf_title">Tournament title</label>
+              <div class="inset-field"><input type="text" id="tf_title" placeholder="e.g. 🔥 YOUR PLATO GROUP 🔥 ⚔️ CARROM TOUR ⚔️" required></div>
+            </div>
+            <div>
+              <label for="tf_game">Game</label>
+              <div class="inset-field"><input type="text" id="tf_game" placeholder="e.g. Carrom" required></div>
+            </div>
+            <div>
+              <label for="tf_slots">Slots (max players)</label>
+              <div class="inset-field"><input type="number" id="tf_slots" min="1" max="500" value="32" required></div>
+              <p class="field-note" id="tf_capacityNote" hidden></p>
+            </div>
+            <div class="span-2">
+              <label for="tf_teamSize">Team format <span style="font-weight:600; color:var(--text-soft);">(currently supported for team games like Soccer)</span></label>
+              <div class="inset-field">
+                <select id="tf_teamSize">
+                  <option value="1" selected>👤 1v1 (Solo)</option>
+                  <option value="2">👥 2v2 (Duos - players also submit a partner's Plato ID)</option>
+                </select>
+              </div>
+            </div>
+            <div class="span-2" id="tf_assigneeField" hidden>
+              <label>Organizers who can manage this tournament <span style="font-weight:600; color:var(--text-soft);">(admin only, optional)</span></label>
+              <div id="tf_assigneeList" style="display:flex; flex-wrap:wrap; gap:10px;"></div>
+              <p class="field-note">Tick any organizers who should also be able to view &amp; edit this tournament from their own dashboard. You can tick more than one.</p>
+            </div>
+            <div>
+              <label for="tf_date">Date</label>
+              <div class="inset-field"><input type="date" id="tf_date" required></div>
+            </div>
+            <div>
+              <label for="tf_time">Time</label>
+              <div class="inset-field"><input type="time" id="tf_time" required></div>
+            </div>
+            <div class="span-2">
+              <label for="tf_tz">Timezone you're entering this time in</label>
+              <div class="inset-field"><select id="tf_tz"></select></div>
+              <p class="field-note">We'll convert this automatically so every player sees it in their own timezone on the home page.</p>
+            </div>
+            <div class="span-2">
+              <label for="tf_hostInput">Hosts (who players should tag/contact to register)</label>
+              <div class="add-member-row" style="display:flex; gap:12px; flex-wrap:wrap;">
+                <div class="inset-field" style="flex:1 1 220px;">
+                  <input type="text" id="tf_hostInput" placeholder="e.g. Host1" autocomplete="off">
+                </div>
+                <button type="button" class="btn" id="tf_hostAddBtn">+ Add Host</button>
+              </div>
+              <ul class="chip-list" id="tf_hostList" style="margin-top:10px;"></ul>
+              <p class="field-note">Add one or more hosts - handy when a tournament has co-organizers running registration together.</p>
+            </div>
+            <div class="span-2">
+              <label for="tf_announcement">Announcement (shown on the card - prize pool, time, slots, hype)</label>
+              <div class="inset-field"><textarea id="tf_announcement" style="min-height:120px;" placeholder="🔥 YOUR TOURNAMENT NAME 🔥&#10;⏰ Time: 10 PM IST  👥 Slots: 32 Players&#10;🏆 PRIZE POOL  🥇 1st: 2K  🥈 2nd: 1K" required></textarea></div>
+            </div>
+            <div class="span-2">
+              <label for="tf_details">Rules / registration details (shown below, smaller text)</label>
+              <div class="inset-field"><textarea id="tf_details" style="min-height:100px;" placeholder="📝 Registration opens 30 mins before tour!&#10;🚫 AFK players will be disqualified."></textarea></div>
+            </div>
+            <div class="span-2">
+              <label for="tf_sponsor">Sponsor <span style="font-weight:600; color:var(--text-soft);">(optional)</span></label>
+              <div class="inset-field"><input type="text" id="tf_sponsor" placeholder="e.g. Plato Gaming Co."></div>
+            </div>
+            <div class="span-2">
+              <label for="tf_closingMessage">Closing message <span style="font-weight:600; color:var(--text-soft);">(optional - post this once the tournament wraps up)</span></label>
+              <div class="inset-field"><textarea id="tf_closingMessage" style="min-height:90px;" placeholder="🙏 Thank you for joining the tour! We appreciate every participant. Those who didn't win this time - hope you had fun, maybe next time you'll be the champion! 🎉"></textarea></div>
+              <div class="btn-row" style="margin-top:8px;"><button type="button" class="btn btn-sm" id="useDefaultMessageBtn">✨ Use suggested message</button></div>
+            </div>
+            <div class="span-2">
+              <label>Winners <span style="font-weight:600; color:var(--text-soft);">(optional - shows a "Here are the winners" box on the tournament card)</span></label>
+              <div class="form-grid">
+                <div>
+                  <label for="tf_winner1" style="font-size:0.8rem;">🥇 1st Place</label>
+                  <div class="inset-field"><input type="text" id="tf_winner1" placeholder="e.g. ShadowFang"></div>
+                </div>
+                <div>
+                  <label for="tf_winner2" style="font-size:0.8rem;">🥈 2nd Place</label>
+                  <div class="inset-field"><input type="text" id="tf_winner2" placeholder="e.g. LunaWolf"></div>
+                </div>
+                <div>
+                  <label for="tf_winner3" style="font-size:0.8rem;">🥉 3rd Place</label>
+                  <div class="inset-field"><input type="text" id="tf_winner3" placeholder="optional"></div>
+                </div>
+                <div>
+                  <label for="tf_winner4" style="font-size:0.8rem;">4️⃣ 4th Place</label>
+                  <div class="inset-field"><input type="text" id="tf_winner4" placeholder="optional"></div>
+                </div>
+              </div>
+              <div class="btn-row" style="margin-top:8px;">
+                <button type="button" class="btn btn-sm" id="pullBracketWinnersBtn" hidden>🏆 Pull winners from Match Bracket</button>
+              </div>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button type="submit" class="btn btn-primary" id="tourSaveBtn">🏆 Publish Tournament</button>
+            <button type="button" class="btn" id="tourCancelEditBtn" hidden>Cancel edit</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2 style="margin:0 0 4px;"><span class="section-icon" aria-hidden="true">📋</span>My Tournaments</h2>
+        <p class="hint">Manage, view registrations, or send registered players straight to the Forge.</p>
+        <div id="myTourList"></div>
+        <p class="empty-note" id="noTours" hidden>You haven't created any tournaments yet - use the form above.</p>
+      </section>
+    </section>
+
+    <!-- ORGANIZERS TAB (admin, or organizers granted permission) -->
+    <section id="organizersPanel" hidden>
+      <section class="card">
+        <h2 style="margin:0 0 4px;"><span class="section-icon" aria-hidden="true">➕</span>Create an Organizer</h2>
+        <p class="hint">Give them a username &amp; password so they can log in and run their own tournaments.</p>
+        <form id="orgForm">
+          <div class="form-grid">
+            <div>
+              <label for="og_display">Display name</label>
+              <div class="inset-field"><input type="text" id="og_display" placeholder="e.g. Bella" required></div>
+            </div>
+            <div>
+              <label for="og_user">Username</label>
+              <div class="inset-field"><input type="text" id="og_user" placeholder="e.g. bella" required></div>
+            </div>
+            <div class="span-2">
+              <label for="og_pass">Password</label>
+              <div class="inset-field"><input type="text" id="og_pass" placeholder="Set a starting password" required></div>
+            </div>
+            <div class="span-2" id="og_canManageField" hidden>
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="checkbox" id="og_canManage" style="width:auto;">
+                Allow this organizer to add more organizers (admin only setting)
+              </label>
+            </div>
+          </div>
+          <div class="btn-row"><button type="submit" class="btn btn-primary">➕ Create Organizer</button></div>
+        </form>
+      </section>
+      <section class="card">
+        <h2 style="margin:0 0 4px;"><span class="section-icon" aria-hidden="true">🧑‍💼</span>Organizers</h2>
+        <div id="orgList"></div>
+      </section>
+    </section>
+  </div>
+</div>
+
+<div id="loginModalRoot"></div>
+
+<!-- Registrations modal -->
+<div class="modal-overlay" id="regModalOverlay" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="regModalTitle">
+    <div class="modal-head">
+      <h2 id="regModalTitle">Registrations</h2>
+      <button type="button" class="modal-close" id="regModalClose" aria-label="Close">✕</button>
+    </div>
+    <div id="regModalBody"></div>
+  </div>
+</div>
+
+<!-- Reset password modal -->
+<div class="modal-overlay" id="pwModalOverlay" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="pwModalTitle" style="max-width:420px;">
+    <div class="modal-head">
+      <h2 id="pwModalTitle">Reset Password</h2>
+      <button type="button" class="modal-close" id="pwModalClose" aria-label="Close">✕</button>
+    </div>
+    <form id="pwForm">
+      <label for="pwNewInput">New password</label>
+      <div class="inset-field" style="margin-bottom:14px;"><input type="text" id="pwNewInput" required></div>
+      <div class="btn-row"><button type="submit" class="btn btn-primary btn-block">Reset Password</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit organizer modal -->
+<div class="modal-overlay" id="editOrgModalOverlay" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="editOrgModalTitle" style="max-width:420px;">
+    <div class="modal-head">
+      <h2 id="editOrgModalTitle">Edit Organizer</h2>
+      <button type="button" class="modal-close" id="editOrgModalClose" aria-label="Close">✕</button>
+    </div>
+    <form id="editOrgForm">
+      <label for="editOrgDisplay">Display name</label>
+      <div class="inset-field" style="margin-bottom:14px;"><input type="text" id="editOrgDisplay" required></div>
+      <label for="editOrgUser">Username</label>
+      <div class="inset-field" style="margin-bottom:14px;"><input type="text" id="editOrgUser" required></div>
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-bottom:6px;">
+        <input type="checkbox" id="editOrgCanManage" style="width:auto;">
+        Allow this organizer to add more organizers
+      </label>
+      <p id="editOrgError" class="field-note" style="color:var(--danger); display:none;"></p>
+      <div class="btn-row"><button type="submit" class="btn btn-primary btn-block">Save Changes</button></div>
+    </form>
+  </div>
+</div>
+
+<div id="toast" role="status"></div>
+
+<script type="module">
+import { TF } from "./shared.js";
+import { TFHeader } from "./header.js";
+(function(){
+  "use strict";
+
+  var session = TF.getSession();
+  var toast = document.getElementById('toast');
+  function showToast(msg){
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(function(){ toast.classList.remove('show'); }, 2400);
+  }
+
+  TFHeader.render('dashboard');
+
+  if(!session){
+    document.getElementById('guardedOut').hidden = false;
+    TFHeader.openLogin();
+  } else {
+    document.getElementById('dashboardContent').hidden = false;
+    initDashboard();
+  }
+
+  function initDashboard(){
+    var isAdmin = session.role === 'admin';
+    var canAddOrganizers = isAdmin || !!session.canManageOrganizers;
+
+    // ---------- Tabs ----------
+    var tabTournamentsBtn = document.getElementById('tabTournamentsBtn');
+    var tabOrganizersBtn = document.getElementById('tabOrganizersBtn');
+    var tournamentsPanel = document.getElementById('tournamentsPanel');
+    var organizersPanel = document.getElementById('organizersPanel');
+    if(canAddOrganizers){
+      tabOrganizersBtn.hidden = false;
+      tabOrganizersBtn.addEventListener('click', function(){ switchTab('organizers'); });
+      tabTournamentsBtn.addEventListener('click', function(){ switchTab('tournaments'); });
+    }
+    function switchTab(name){
+      var isT = name === 'tournaments';
+      tabTournamentsBtn.classList.toggle('is-active', isT);
+      tabOrganizersBtn.classList.toggle('is-active', !isT);
+      tournamentsPanel.hidden = !isT;
+      organizersPanel.hidden = isT;
+    }
+
+    // ---------- Tournament form ----------
+    var tourForm = document.getElementById('tourForm');
+    var tf_title = document.getElementById('tf_title');
+    var tf_game = document.getElementById('tf_game');
+    var tf_slots = document.getElementById('tf_slots');
+    var tf_teamSize = document.getElementById('tf_teamSize');
+    var tf_capacityNote = document.getElementById('tf_capacityNote');
+
+    function updateCapacityNote(){
+      var slots = parseInt(tf_slots.value, 10) || 0;
+      if(tf_teamSize.value === '2' && slots > 0){
+        var teams = Math.floor(slots / 2);
+        tf_capacityNote.textContent = '👥 ' + slots + ' player slots = up to ' + teams + ' team' + (teams === 1 ? '' : 's') + ' of 2.';
+        tf_capacityNote.hidden = false;
+      } else {
+        tf_capacityNote.hidden = true;
+      }
+    }
+    tf_slots.addEventListener('input', updateCapacityNote);
+    tf_teamSize.addEventListener('change', updateCapacityNote);
+    var tf_date = document.getElementById('tf_date');
+    var tf_time = document.getElementById('tf_time');
+    var tf_tz = document.getElementById('tf_tz');
+    var tf_announcement = document.getElementById('tf_announcement');
+    var tf_details = document.getElementById('tf_details');
+    var tf_sponsor = document.getElementById('tf_sponsor');
+    var tf_closingMessage = document.getElementById('tf_closingMessage');
+    var useDefaultMessageBtn = document.getElementById('useDefaultMessageBtn');
+    var tf_winner1 = document.getElementById('tf_winner1');
+    var tf_winner2 = document.getElementById('tf_winner2');
+    var tf_winner3 = document.getElementById('tf_winner3');
+    var tf_winner4 = document.getElementById('tf_winner4');
+    var pullBracketWinnersBtn = document.getElementById('pullBracketWinnersBtn');
+    var tf_assigneeField = document.getElementById('tf_assigneeField');
+    var tf_assigneeList = document.getElementById('tf_assigneeList');
+    var tourEditId = document.getElementById('tourEditId');
+    var tourSaveBtn = document.getElementById('tourSaveBtn');
+    var tourCancelEditBtn = document.getElementById('tourCancelEditBtn');
+
+    var DEFAULT_CLOSING_MESSAGE = '🙏 Thank you for joining the tour! We appreciate every participant. Those who didn\u2019t win this time - hope you had fun, maybe next time you\u2019ll be the champion! 🎉';
+    useDefaultMessageBtn.addEventListener('click', function(){
+      tf_closingMessage.value = DEFAULT_CLOSING_MESSAGE;
+    });
+
+    pullBracketWinnersBtn.addEventListener('click', function(){
+      if(!tourEditId.value) return;
+      pullBracketWinnersBtn.disabled = true;
+      TF.getForgeState(tourEditId.value).then(function(state){
+        var podium = state ? TF.extractPodiumFromBracketState(state.bracket) : null;
+        if(!podium){
+          showToast('No completed Match Bracket found for this tournament yet.');
+          return;
+        }
+        tf_winner1.value = podium.champion ? TF.formatPlatoId(podium.champion) : '';
+        tf_winner2.value = podium.runnerUp ? TF.formatPlatoId(podium.runnerUp) : '';
+        tf_winner3.value = podium.thirdPlace ? TF.formatPlatoId(podium.thirdPlace) : '';
+        tf_winner4.value = podium.fourthPlace ? TF.formatPlatoId(podium.fourthPlace) : '';
+        showToast('Winners pulled from the Match Bracket!');
+      }).catch(function(err){
+        showToast('Could not load the Match Bracket - check your connection.');
+        console.error(err);
+      }).finally(function(){
+        pullBracketWinnersBtn.disabled = false;
+      });
+    });
+
+    TF.TIMEZONES.forEach(function(tz){
+      var opt = document.createElement('option');
+      opt.value = tz.id; opt.textContent = tz.label;
+      tf_tz.appendChild(opt);
+    });
+    tf_tz.value = 'Asia/Kolkata';
+
+    // ---------- Co-manager multi-select (admin only) ----------
+    var organizersCache = [];
+    var currentManagerIds = [];
+
+    function renderAssigneeList(){
+      tf_assigneeList.innerHTML = '';
+      if(organizersCache.length === 0){
+        tf_assigneeList.innerHTML = '<p class="empty-note">No organizers yet - create one in the Organizers tab.</p>';
+        return;
+      }
+      organizersCache.forEach(function(o){
+        var label = document.createElement('label');
+        label.className = 'chip';
+        label.style.cursor = 'pointer';
+        var cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.style.width = 'auto';
+        cb.checked = currentManagerIds.indexOf(o.id) !== -1;
+        cb.addEventListener('change', function(){
+          if(cb.checked){
+            if(currentManagerIds.indexOf(o.id) === -1) currentManagerIds.push(o.id);
+          } else {
+            currentManagerIds = currentManagerIds.filter(function(id){ return id !== o.id; });
+          }
+        });
+        var span = document.createElement('span');
+        span.textContent = o.displayName;
+        label.appendChild(cb);
+        label.appendChild(span);
+        tf_assigneeList.appendChild(label);
+      });
+    }
+
+    if(isAdmin){
+      tf_assigneeField.hidden = false;
+      TF.listOrganizers().then(function(organizers){
+        organizersCache = organizers;
+        renderAssigneeList();
+      });
+    }
+
+    // ---------- Hosts chip input ----------
+    var tf_hostInput = document.getElementById('tf_hostInput');
+    var tf_hostAddBtn = document.getElementById('tf_hostAddBtn');
+    var tf_hostList = document.getElementById('tf_hostList');
+    var currentHosts = [];
+
+    function renderHostChips(){
+      tf_hostList.innerHTML = '';
+      if(currentHosts.length === 0){
+        var li = document.createElement('li');
+        li.className = 'empty-note';
+        li.textContent = 'No hosts added yet.';
+        tf_hostList.appendChild(li);
+        return;
+      }
+      currentHosts.forEach(function(name, idx){
+        var li = document.createElement('li');
+        li.className = 'chip';
+        var span = document.createElement('span');
+        span.textContent = name;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.setAttribute('aria-label', 'Remove ' + name);
+        btn.textContent = '×';
+        btn.addEventListener('click', function(){
+          currentHosts.splice(idx, 1);
+          renderHostChips();
+        });
+        li.appendChild(span);
+        li.appendChild(btn);
+        tf_hostList.appendChild(li);
+      });
+    }
+
+    function addHost(){
+      var name = tf_hostInput.value.trim();
+      if(!name) return;
+      if(currentHosts.some(function(h){ return h.toLowerCase() === name.toLowerCase(); })){
+        showToast('That host is already added.');
+        return;
+      }
+      currentHosts.push(name);
+      tf_hostInput.value = '';
+      tf_hostInput.focus();
+      renderHostChips();
+    }
+    tf_hostAddBtn.addEventListener('click', addHost);
+    tf_hostInput.addEventListener('keydown', function(e){
+      if(e.key === 'Enter'){ e.preventDefault(); addHost(); }
+    });
+    renderHostChips();
+
+    function collectWinners(){
+      var pairs = [[1, tf_winner1.value], [2, tf_winner2.value], [3, tf_winner3.value], [4, tf_winner4.value]];
+      return pairs.filter(function(p){ return p[1].trim(); }).map(function(p){ return { place: p[0], name: p[1].trim() }; });
+    }
+    function populateWinners(winners){
+      var byPlace = {};
+      (winners || []).forEach(function(w){ byPlace[w.place] = w.name; });
+      tf_winner1.value = byPlace[1] || '';
+      tf_winner2.value = byPlace[2] || '';
+      tf_winner3.value = byPlace[3] || '';
+      tf_winner4.value = byPlace[4] || '';
+    }
+
+    function resetForm(){
+      tourForm.reset();
+      tourEditId.value = '';
+      tf_tz.value = 'Asia/Kolkata';
+      tf_teamSize.value = '1';
+      currentManagerIds = [];
+      if(isAdmin) renderAssigneeList();
+      currentHosts = [];
+      renderHostChips();
+      populateWinners([]);
+      pullBracketWinnersBtn.hidden = true;
+      tourSaveBtn.textContent = '🏆 Publish Tournament';
+      tourCancelEditBtn.hidden = true;
+      updateCapacityNote();
+    }
+
+    tourCancelEditBtn.addEventListener('click', resetForm);
+
+    tourForm.addEventListener('submit', function(e){
+      e.preventDefault();
+      var dateParts = tf_date.value.split('-').map(Number);
+      var timeParts = tf_time.value.split(':').map(Number);
+      var startUTC = TF.zonedTimeToUtc(dateParts[0], dateParts[1], dateParts[2], timeParts[0], timeParts[1], tf_tz.value);
+      var data = {
+        title: tf_title.value,
+        game: tf_game.value,
+        slots: tf_slots.value,
+        teamSize: tf_teamSize.value,
+        announcement: tf_announcement.value,
+        details: tf_details.value,
+        sponsor: tf_sponsor.value,
+        closingMessage: tf_closingMessage.value,
+        winners: collectWinners(),
+        hosts: currentHosts.slice(),
+        startUTC: startUTC,
+        createdTZ: tf_tz.value
+      };
+      if(isAdmin){
+        data.managerIds = currentManagerIds.slice();
+      }
+      tourSaveBtn.disabled = true;
+      var isEdit = !!tourEditId.value;
+      var work = isEdit ? TF.updateTournament(tourEditId.value, data, session) : TF.createTournament(data, session);
+      work.then(function(result){
+        showToast(isEdit
+          ? (result ? 'Tournament updated!' : 'Could not update - check permissions.')
+          : 'Tournament published! It\u2019s now live on the home page.');
+        resetForm();
+        renderTournaments();
+      }).catch(function(err){
+        showToast('Something went wrong saving the tournament.');
+        console.error(err);
+      }).finally(function(){
+        tourSaveBtn.disabled = false;
+      });
+    });
+
+    function editTournament(id){
+      TF.getTournament(id).then(function(t){
+        if(!t) return;
+        tourEditId.value = t.id;
+        tf_title.value = t.title;
+        tf_game.value = t.game;
+        tf_slots.value = t.slots;
+        tf_teamSize.value = String(t.teamSize === 2 ? 2 : 1);
+        updateCapacityNote();
+        tf_announcement.value = t.announcement;
+        tf_details.value = t.details;
+        tf_sponsor.value = t.sponsor || '';
+        tf_closingMessage.value = t.closingMessage || '';
+        populateWinners(t.winners);
+        pullBracketWinnersBtn.hidden = false;
+        if(isAdmin){
+          currentManagerIds = (t.managerIds || []).slice();
+          renderAssigneeList();
+        }
+        currentHosts = (t.hosts || []).slice();
+        renderHostChips();
+        tf_tz.value = t.createdTZ || 'Asia/Kolkata';
+        var localParts = utcToLocalDateTimeParts(t.startUTC, tf_tz.value);
+        tf_date.value = localParts.date;
+        tf_time.value = localParts.time;
+        tourSaveBtn.textContent = '💾 Save Changes';
+        tourCancelEditBtn.hidden = false;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }
+
+    function utcToLocalDateTimeParts(utcMillis, timeZone){
+      var dtf = new Intl.DateTimeFormat('en-CA', {
+        timeZone: timeZone, year:'numeric', month:'2-digit', day:'2-digit',
+        hour:'2-digit', minute:'2-digit', hour12:false
+      });
+      var parts = {}; dtf.formatToParts(new Date(utcMillis)).forEach(function(p){ parts[p.type] = p.value; });
+      return { date: parts.year + '-' + parts.month + '-' + parts.day, time: parts.hour + ':' + parts.minute };
+    }
+
+    // ---------- Tournament list ----------
+    var myTourList = document.getElementById('myTourList');
+    var noTours = document.getElementById('noTours');
+
+    var STATUS_BADGE = {
+      ongoing: '<span class="badge badge-live">🟢 LIVE</span>',
+      upcoming: '<span class="badge badge-upcoming">🕒 UPCOMING</span>',
+      completed: '<span class="badge badge-completed">✅ DONE</span>',
+      cancelled: '<span class="badge badge-cancelled">🚫 CANCELLED</span>'
+    };
+
+    function managerNames(t){
+      return (t.managerIds || []).map(function(id){
+        var o = organizersCache.filter(function(x){ return x.id === id; })[0];
+        return o ? o.displayName : id;
+      }).join(', ');
+    }
+
+    function renderTournaments(){
+      myTourList.innerHTML = '<p class="empty-note">Loading…</p>';
+      return TF.listTournaments().then(function(all){
+        var mine = isAdmin ? all : all.filter(function(t){
+          return t.organizerId === session.id || (t.managerIds || []).indexOf(session.id) !== -1;
+        });
+        myTourList.innerHTML = '';
+        noTours.hidden = mine.length > 0;
+        mine.forEach(function(t){
+          var row = document.createElement('div');
+          row.className = 'list-row';
+          var coManaged = t.managerIds && t.managerIds.length ? managerNames(t) : '';
+          row.innerHTML =
+            '<div class="lr-main">' +
+              '<div class="lr-title">' + STATUS_BADGE[t.status] + ' ' + TFHeader.escapeHtml(t.title) + '</div>' +
+              '<div class="lr-sub">' + TFHeader.escapeHtml(t.game) + (t.teamSize === 2 ? ' (2v2)' : '') + ' · ' + TF.formatInTZ(t.startUTC, t.createdTZ || 'Asia/Kolkata') + ' (' + TF.tzLabel(t.createdTZ) + ') · ' +
+                t.registeredCount + (t.teamCapacity ? ('/' + t.teamCapacity) : '') + (t.teamSize === 2 ? ' teams registered' : ' registered') +
+                (isAdmin ? ' · hosted by ' + TFHeader.escapeHtml(t.organizerName || 'admin') : '') +
+                (isAdmin && coManaged ? ' · co-managed by ' + TFHeader.escapeHtml(coManaged) : '') +
+              '</div>' +
+            '</div>' +
+            '<div class="lr-actions">' +
+              '<button type="button" class="btn btn-sm" data-regs="' + t.id + '">👥 Registrations</button>' +
+              '<button type="button" class="btn btn-sm" data-forge="' + t.id + '">🎲 Open in Forge</button>' +
+              '<button type="button" class="btn btn-sm" data-complete="' + t.id + '">' +
+                (t.completed ? '↩️ Reopen Tournament' : '✅ Mark Completed') + '</button>' +
+              '<button type="button" class="btn btn-sm" data-edit="' + t.id + '">✏️ Edit</button>' +
+              '<button type="button" class="btn btn-sm btn-danger" data-del="' + t.id + '">🗑️ Delete</button>' +
+            '</div>';
+          myTourList.appendChild(row);
+
+          var completeBtn = row.querySelector('[data-complete]');
+          completeBtn.addEventListener('click', function(){
+            var nextCompleted = !t.completed;
+            completeBtn.disabled = true;
+            TF.updateTournament(t.id, { completed: nextCompleted }, session).then(function(result){
+              if(!result){
+                showToast('Could not update - check permissions.');
+                completeBtn.disabled = false;
+                return;
+              }
+              showToast(nextCompleted ? 'Tournament marked as completed.' : 'Tournament reopened.');
+              renderTournaments();
+            }).catch(function(err){
+              showToast('Something went wrong updating the tournament.');
+              console.error(err);
+              completeBtn.disabled = false;
+            });
+          });
+        });
+
+        myTourList.querySelectorAll('[data-edit]').forEach(function(b){ b.addEventListener('click', function(){ editTournament(b.getAttribute('data-edit')); }); });
+        myTourList.querySelectorAll('[data-del]').forEach(function(b){ b.addEventListener('click', function(){
+          if(confirm('Delete this tournament? This cannot be undone.')){
+            TF.deleteTournament(b.getAttribute('data-del'), session).then(function(){
+              renderTournaments();
+              showToast('Tournament deleted.');
+            });
+          }
+        }); });
+        myTourList.querySelectorAll('[data-regs]').forEach(function(b){ b.addEventListener('click', function(){ openRegistrations(b.getAttribute('data-regs')); }); });
+        myTourList.querySelectorAll('[data-forge]').forEach(function(b){ b.addEventListener('click', function(){ sendToForge(b.getAttribute('data-forge')); }); });
+      }).catch(function(err){
+        myTourList.innerHTML = '<p class="empty-note">Couldn\u2019t load tournaments - check your Firebase setup and connection.</p>';
+        console.error(err);
+      });
+    }
+
+    // ---------- Registrations modal ----------
+    var regModalOverlay = document.getElementById('regModalOverlay');
+    var regModalTitle = document.getElementById('regModalTitle');
+    var regModalBody = document.getElementById('regModalBody');
+    document.getElementById('regModalClose').addEventListener('click', function(){ regModalOverlay.hidden = true; });
+    regModalOverlay.addEventListener('click', function(e){ if(e.target === regModalOverlay) regModalOverlay.hidden = true; });
+
+    function openRegistrations(id){
+      TF.getTournament(id).then(function(t){
+        if(!t) return;
+        regModalTitle.textContent = 'Registrations - ' + t.title;
+        if(t.registrations.length === 0){
+          regModalBody.innerHTML = '<p class="empty-note">No one has registered yet.</p>';
+        } else {
+          var isTeam = t.teamSize === 2;
+          regModalBody.innerHTML =
+            (isTeam ? '<p class="field-note" style="margin-bottom:10px;">👥 2v2 tournament - each entry below is one team.</p>' : '') +
+            '<ul class="chip-list">' +
+            t.registrations.map(function(r){
+              var label = isTeam ? TF.teamLabel(r.platoId, r.partnerPlatoId) : r.platoId;
+              return '<li class="chip"><span>' + TFHeader.escapeHtml(TF.formatPlatoId(label)) + '</span></li>';
+            }).join('') +
+            '</ul><div class="btn-row"><button type="button" class="btn btn-sm" id="copyRegsBtn">📋 Copy all IDs</button>' +
+            '<button type="button" class="btn btn-primary btn-sm" id="forgeFromRegsBtn">🎲 Open in Forge</button></div>';
+          document.getElementById('copyRegsBtn').addEventListener('click', function(){
+            var text = t.registrations.map(function(r){
+              var label = isTeam ? TF.teamLabel(r.platoId, r.partnerPlatoId) : r.platoId;
+              return TF.formatPlatoId(label);
+            }).join(', ');
+            navigator.clipboard && navigator.clipboard.writeText(text).then(function(){ showToast('Copied!'); });
+          });
+          document.getElementById('forgeFromRegsBtn').addEventListener('click', function(){ sendToForge(id); });
+        }
+        regModalOverlay.hidden = false;
+      });
+    }
+
+    function sendToForge(id){
+      TF.getTournament(id).then(function(t){
+        if(!t) return;
+        var isTeam = t.teamSize === 2;
+        var payload = {
+          tournamentId: t.id,
+          title: t.title,
+          game: t.game,
+          // For 2v2 tournaments each "member" sent to the bracket is a whole
+          // team (e.g. "Alice & Bob"), so Match Bracket pairs team vs team.
+          members: t.registrations.map(function(r){
+            return isTeam ? TF.teamLabel(r.platoId, r.partnerPlatoId) : r.platoId;
+          })
+        };
+        try{ localStorage.setItem('tf_forge_import', JSON.stringify(payload)); }catch(e){}
+        location.href = 'forge.html';
+      });
+    }
+
+    renderTournaments();
+
+    // ---------- Organizers tab ----------
+    if(canAddOrganizers){
+      var orgForm = document.getElementById('orgForm');
+      var orgList = document.getElementById('orgList');
+      var og_canManageField = document.getElementById('og_canManageField');
+      var og_canManage = document.getElementById('og_canManage');
+      if(isAdmin) og_canManageField.hidden = false;
+
+      function renderOrganizers(){
+        orgList.innerHTML = '<p class="empty-note">Loading…</p>';
+        return TF.listOrganizers().then(function(organizers){
+          orgList.innerHTML = '';
+          if(organizers.length === 0){
+            orgList.innerHTML = '<p class="empty-note">No organizers yet - create one above.</p>';
+            return;
+          }
+          organizers.forEach(function(o){
+            var row = document.createElement('div');
+            row.className = 'list-row';
+            row.innerHTML =
+              '<div class="lr-main">' +
+                '<div class="lr-title">' + TFHeader.escapeHtml(o.displayName) + ' <span class="tag">@' + TFHeader.escapeHtml(o.username) + '</span>' +
+                  (o.canManageOrganizers ? ' <span class="tag">🔑 Can add organizers</span>' : '') +
+                '</div>' +
+                '<div class="lr-sub">Added ' + new Date(o.createdAt).toLocaleDateString() + '</div>' +
+              '</div>' +
+              (isAdmin ?
+                '<div class="lr-actions">' +
+                  '<button type="button" class="btn btn-sm" data-editorg="' + o.id + '">✏️ Edit</button>' +
+                  '<button type="button" class="btn btn-sm" data-reset="' + o.id + '">🔑 Reset Password</button>' +
+                  '<button type="button" class="btn btn-sm btn-danger" data-delorg="' + o.id + '">🗑️ Delete</button>' +
+                '</div>' : '');
+            orgList.appendChild(row);
+          });
+          if(isAdmin){
+            orgList.querySelectorAll('[data-editorg]').forEach(function(b){ b.addEventListener('click', function(){ openEditOrgModal(b.getAttribute('data-editorg')); }); });
+            orgList.querySelectorAll('[data-reset]').forEach(function(b){ b.addEventListener('click', function(){ openPwModal(b.getAttribute('data-reset')); }); });
+            orgList.querySelectorAll('[data-delorg]').forEach(function(b){ b.addEventListener('click', function(){
+              if(confirm('Delete this organizer? Their tournaments will transfer to Admin.')){
+                TF.deleteOrganizer(b.getAttribute('data-delorg')).then(function(){
+                  renderOrganizers();
+                  renderTournaments();
+                  showToast('Organizer deleted.');
+                });
+              }
+            }); });
+          }
+        }).catch(function(err){
+          orgList.innerHTML = '<p class="empty-note">Couldn\u2019t load organizers - check your Firebase setup and connection.</p>';
+          console.error(err);
+        });
+      }
+
+      orgForm.addEventListener('submit', function(e){
+        e.preventDefault();
+        var username = document.getElementById('og_user').value.trim();
+        TF.listOrganizers().then(function(organizers){
+          if(organizers.some(function(o){ return o.username.toLowerCase() === username.toLowerCase(); })){
+            showToast('That username is already taken.');
+            return;
+          }
+          return TF.createOrganizer({
+            displayName: document.getElementById('og_display').value,
+            username: username,
+            password: document.getElementById('og_pass').value,
+            canManageOrganizers: isAdmin && og_canManage.checked
+          }).then(function(){
+            orgForm.reset();
+            renderOrganizers();
+            showToast('Organizer created!');
+          });
+        }).catch(function(err){
+          showToast('Something went wrong creating the organizer.');
+          console.error(err);
+        });
+      });
+
+      var pwModalOverlay = document.getElementById('pwModalOverlay');
+      var pwForm = document.getElementById('pwForm');
+      var pwTargetId = null;
+      document.getElementById('pwModalClose').addEventListener('click', function(){ pwModalOverlay.hidden = true; });
+      pwModalOverlay.addEventListener('click', function(e){ if(e.target === pwModalOverlay) pwModalOverlay.hidden = true; });
+      function openPwModal(orgId){
+        pwTargetId = orgId;
+        document.getElementById('pwNewInput').value = '';
+        pwModalOverlay.hidden = false;
+      }
+      pwForm.addEventListener('submit', function(e){
+        e.preventDefault();
+        TF.resetOrganizerPassword(pwTargetId, document.getElementById('pwNewInput').value).then(function(){
+          pwModalOverlay.hidden = true;
+          showToast('Password reset.');
+        });
+      });
+
+      var editOrgModalOverlay = document.getElementById('editOrgModalOverlay');
+      var editOrgForm = document.getElementById('editOrgForm');
+      var editOrgDisplay = document.getElementById('editOrgDisplay');
+      var editOrgUser = document.getElementById('editOrgUser');
+      var editOrgCanManage = document.getElementById('editOrgCanManage');
+      var editOrgError = document.getElementById('editOrgError');
+      var editOrgTargetId = null;
+      document.getElementById('editOrgModalClose').addEventListener('click', function(){ editOrgModalOverlay.hidden = true; });
+      editOrgModalOverlay.addEventListener('click', function(e){ if(e.target === editOrgModalOverlay) editOrgModalOverlay.hidden = true; });
+      function openEditOrgModal(orgId){
+        TF.listOrganizers().then(function(organizers){
+          var org = organizers.filter(function(o){ return o.id === orgId; })[0];
+          if(!org) return;
+          editOrgTargetId = orgId;
+          editOrgDisplay.value = org.displayName;
+          editOrgUser.value = org.username;
+          editOrgCanManage.checked = !!org.canManageOrganizers;
+          editOrgError.style.display = 'none';
+          editOrgModalOverlay.hidden = false;
+        });
+      }
+      editOrgForm.addEventListener('submit', function(e){
+        e.preventDefault();
+        var newUsername = editOrgUser.value.trim();
+        TF.listOrganizers().then(function(organizers){
+          var taken = organizers.some(function(o){
+            return o.id !== editOrgTargetId && o.username.toLowerCase() === newUsername.toLowerCase();
+          });
+          if(taken){
+            editOrgError.textContent = 'That username is already taken.';
+            editOrgError.style.display = 'block';
+            return;
+          }
+          return TF.updateOrganizer(editOrgTargetId, {
+            displayName: editOrgDisplay.value,
+            username: newUsername,
+            canManageOrganizers: editOrgCanManage.checked
+          }).then(function(){
+            editOrgModalOverlay.hidden = true;
+            renderOrganizers();
+            renderTournaments();
+            showToast('Organizer updated.');
+          });
+        });
+      });
+
+      renderOrganizers();
+    }
+
+    // Deep-link from home page "Manage" button
+    var params = new URLSearchParams(location.search);
+    var preselect = params.get('tournament');
+    if(preselect) openRegistrations(preselect);
+  }
+})();
+</script>
+</body>
+</html>
