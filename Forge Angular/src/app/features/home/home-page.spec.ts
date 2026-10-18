@@ -176,4 +176,43 @@ describe('HomePage', () => {
     expect(guide?.querySelectorAll('.caption').length).toBe(4);
     expect(guide?.textContent).toContain('Enter your Plato ID');
   });
+
+  it('hides Current matches once a tournament is completed', async () => {
+    const forgeState = {
+      members: ['Alice', 'Bob'],
+      bracket: {
+        thirdPlaceEnabled: false,
+        stages: [
+          {
+            label: 'Final Match',
+            isThirdPlace: false,
+            matches: [{ p1Name: 'Alice', p2Name: 'Bob', winnerName: 'Alice' }],
+          },
+        ],
+      },
+    };
+    TestBed.overrideProvider(TournamentService, {
+      useValue: {
+        list: vi
+          .fn()
+          .mockResolvedValue([
+            make('live', { forgeState }),
+            make('done', { forgeState, completed: true }),
+          ]),
+        myRegistrations: signal<string[]>([]),
+      },
+    });
+    const fixture = TestBed.createComponent(HomePage);
+    const root = fixture.nativeElement as HTMLElement;
+    await fixture.whenStable();
+    await fixture.whenStable();
+    (root.querySelector('button[tfPill]') as HTMLElement).click();
+    await fixture.whenStable();
+
+    const cards = Array.from(root.querySelectorAll('tf-tour-card'));
+    expect(cards.length).toBe(2);
+    const withButton = cards.filter((c) => c.textContent?.includes('Current matches'));
+    expect(withButton.length).toBe(1);
+    expect(withButton[0].textContent).toContain('Cup live');
+  });
 });

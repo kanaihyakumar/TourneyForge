@@ -20,6 +20,7 @@ import {
   fullTableTotals,
   isStageComplete,
   newStage,
+  roundWinnerLines,
   nextStageLabel,
   podiumFromStages,
   stageLosers,
@@ -28,10 +29,15 @@ import {
   tableSizes,
   toggleWinner,
 } from '../../core/utils/bracket';
-import { findGame } from '../../core/config/games';
+import { entryPerMatch, findGame, roundSizeOptions } from '../../core/config/games';
 import { normalizePlatoId } from '../../core/utils/plato';
 import { computeLeaderboard, scoringGames, standingDetail } from '../../core/utils/scoring';
-import { canManage, registrationLabel, winnersFromPodium } from '../../core/utils/tournament';
+import {
+  canManage,
+  registrationLabel,
+  usesFreeRounds,
+  winnersFromPodium,
+} from '../../core/utils/tournament';
 
 @Injectable()
 export class ForgeStore {
@@ -53,8 +59,45 @@ export class ForgeStore {
   readonly advancePerMatch = signal(1);
   readonly games = signal<ScoreGame[]>([]);
   readonly syncStatus = signal('');
+  readonly nextPlayers = signal<string[] | null>(null);
+  readonly nextPerMatch = signal<number | null>(null);
 
   readonly tournamentMode = this.tournamentId !== null;
+  readonly mixedGames = computed(() => this.tournament()?.mixed ?? []);
+  readonly isMixed = computed(() => this.mixedGames().length > 1);
+  readonly freeRounds = computed(() => {
+    const t = this.tournament();
+    return !!t && usesFreeRounds(t);
+  });
+  readonly nextGame = signal<string | null>(null);
+  readonly defaultNextGame = computed(() => {
+    const mixed = this.mixedGames();
+    if (!mixed.length) return null;
+    const last = this.lastStage()?.game;
+    const index = mixed.findIndex((m) => m.game === last);
+    return mixed[Math.min(index + 1, mixed.length - 1)].game;
+  });
+  readonly plannedGame = computed(() => this.nextGame() ?? this.defaultNextGame());
+  readonly plannedEntry = computed(
+    () => this.mixedGames().find((m) => m.game === this.plannedGame()) ?? null,
+  );
+  readonly roundSizeOptions = computed(() =>
+    roundSizeOptions(
+      findGame(this.isMixed() ? (this.plannedGame() ?? '') : (this.tournament()?.game ?? '')),
+      this.plannedSize(),
+    ),
+  );
+  readonly plannedPlayers = computed(
+    () => this.nextPlayers() ?? (this.lastStage() ? stageNames(this.lastStage()!) : []),
+  );
+  readonly plannedSize = computed(
+    () =>
+      this.nextPerMatch() ??
+      (this.isMixed() ? entryPerMatch(this.plannedEntry()) : null) ??
+      this.lastStage()?.perMatch ??
+      this.perMatch(),
+  );
+  readonly roundWinnerLines = computed(() => roundWinnerLines(this.stages()));
   readonly canReplace = computed(() => canManage(this.auth.session(), this.tournament()));
   readonly scoring = computed(() => {
     const config = this.tournament()?.scoring;
@@ -76,7 +119,15 @@ export class ForgeStore {
   });
   readonly nextRound = computed(() => {
     const stage = this.lastStage();
-    if (!stage || !this.lastStageComplete() || this.podium() || this.perMatch() <= 2) return null;
+    if (
+      !stage ||
+      this.freeRounds() ||
+      !this.lastStageComplete() ||
+      this.podium() ||
+      this.perMatch() <= 2
+    ) {
+      return null;
+    }
     const count = stageWinners(stage).length;
     if (count < 2) return null;
     return {
@@ -86,7 +137,7 @@ export class ForgeStore {
     };
   });
   readonly started = computed(() => this.stages().length > 0);
-  readonly podium = computed(() => podiumFromStages(this.stages()));
+  readonly podium = computed(() => (this.freeRounds() ? null : podiumFromStages(this.stages())));
   readonly winnerPlaces = signal(3);
   readonly pointsStandings = computed(() =>
     this.leaderboard()
@@ -111,7 +162,7 @@ export class ForgeStore {
   });
   readonly advanceLabel = computed(() => {
     const stage = this.lastStage();
-    if (!stage || !this.lastStageComplete() || this.podium()) return null;
+    if (!stage || this.freeRounds() || !this.lastStageComplete() || this.podium()) return null;
     const winnerCount = stageWinners(stage).length;
     return winnerCount > 1 ? nextStageLabel(winnerCount, this.perMatch()) : null;
   });
@@ -184,7 +235,18 @@ export class ForgeStore {
     }
     this.advancePerMatch.set(clampAdvance(this.advancePerMatch(), this.perMatch()));
     this.games.set([]);
-    this.stages.set([newStage(names, this.perMatch(), this.advancePerMatch())]);
+    this.nextPlayers.set(null);
+    this.nextPerMatch.set(null);
+    this.nextGame.set(null);
+    this.stages.set([
+      newStage(
+        names,
+        this.perMatch(),
+        this.advancePerMatch(),
+        this.freeRounds() ? 1 : 0,
+        this.isMixed() ? this.mixedGames()[0].game : '',
+      ),
+    ]);
     this.persist();
     this.toast.show('Bracket created! Your first match set is saved.', 'accent');
   }
@@ -195,6 +257,9 @@ export class ForgeStore {
       : 'Reset the whole bracket? This clears all picked winners.';
     if (!confirm(message)) return;
     this.stages.set([]);
+    this.nextPlayers.set(null);
+    this.nextPerMatch.set(null);
+    this.nextGame.set(null);
     this.games.set([]);
     this.thirdPlaceEnabled.set(true);
     this.persist();
@@ -347,6 +412,51 @@ export class ForgeStore {
     const key = normalizePlatoId(name);
     const row = this.leaderboard().find((r) => normalizePlatoId(r.name) === key);
     return { total: row?.points ?? 0 };
+  }
+
+  togglePlanned(name: string, selected: boolean): void {
+    const current = this.plannedPlayers();
+    const without = current.filter((n) => n !== name);
+    this.nextPlayers.set(selected ? [...without, name] : without);
+  }
+
+  planGame(name: string): void {
+    this.nextGame.set(name);
+    this.nextPerMatch.set(null);
+  }
+
+  planSamePlayers(): void {
+    this.nextPlayers.set(null);
+  }
+
+  planWinners(): void {
+    const last = this.lastStage();
+    this.nextPlayers.set(last ? stageWinners(last) : []);
+  }
+
+  planEveryone(): void {
+    this.nextPlayers.set([...this.members()]);
+  }
+
+  planNobody(): void {
+    this.nextPlayers.set([]);
+  }
+
+  advanceFree(): void {
+    const last = this.lastStage();
+    if (!last || !isStageComplete(last)) return;
+    const names = this.plannedPlayers();
+    if (names.length < 2) {
+      this.toast.show('Select at least 2 players for the next round.', 'accent');
+      return;
+    }
+    const size = Math.max(2, this.plannedSize());
+    const game = this.isMixed() ? (this.plannedGame() ?? '') : '';
+    this.stages.update((stages) => [...stages, newStage(names, size, 1, stages.length + 1, game)]);
+    this.nextPlayers.set(null);
+    this.nextPerMatch.set(null);
+    this.nextGame.set(null);
+    this.persist();
   }
 
   private replaceLastStage(stage: BracketStage): void {

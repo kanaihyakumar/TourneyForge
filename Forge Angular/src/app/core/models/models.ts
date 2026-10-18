@@ -12,6 +12,13 @@ export type TeamSize = 1 | 2;
 export type PlayerCategory = 'pro' | 'nab';
 export type WerewolfSide = 'villagers' | 'werewolves';
 
+export interface MixedGameEntry {
+  game: string;
+  gameMode: string;
+  format: string;
+  gameSettings: Record<string, string>;
+}
+
 export interface Winner {
   place: number;
   name: string;
@@ -37,6 +44,8 @@ export interface SavedStage {
   isThirdPlace: boolean;
   advance?: number;
   perMatch?: number;
+  single?: boolean;
+  game?: string;
   matches: SavedMatch[];
 }
 
@@ -74,6 +83,8 @@ export interface BracketStage {
   isThirdPlace: boolean;
   advance: number;
   perMatch?: number;
+  single?: boolean;
+  game?: string;
   matches: BracketMatch[];
 }
 
@@ -120,6 +131,7 @@ export interface TournamentInput {
   format?: string;
   playersPerMatch?: number;
   gameSettings?: Record<string, string>;
+  mixed?: MixedGameEntry[];
   scoring?: ScoringConfig;
   announcement: string;
   details: string;
@@ -148,6 +160,7 @@ export interface TournamentData {
   format?: string;
   playersPerMatch?: number;
   gameSettings?: Record<string, string>;
+  mixed?: MixedGameEntry[];
   scoring?: ScoringConfig;
   announcement: string;
   details: string;
@@ -185,6 +198,7 @@ export interface Tournament extends TournamentData {
   format: string;
   playersPerMatch: number;
   gameSettings: Record<string, string>;
+  mixed: MixedGameEntry[];
   teamCapacity: number;
 }
 

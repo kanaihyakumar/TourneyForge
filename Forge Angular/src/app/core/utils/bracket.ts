@@ -38,8 +38,25 @@ export function clampAdvance(advance: number, perMatch: number): number {
   return Math.min(Math.max(1, Math.floor(advance) || 1), Math.max(1, perMatch - 1));
 }
 
-export function newStage(names: string[], perMatch: number, advance: number): BracketStage {
+export function newStage(
+  names: string[],
+  perMatch: number,
+  advance: number,
+  round = 0,
+  game = '',
+): BracketStage {
   const matches = groupUp(names, perMatch);
+  if (round > 0) {
+    return {
+      label: game ? `Round ${round} · ${game}` : `Round ${round}`,
+      isThirdPlace: false,
+      advance: 1,
+      perMatch,
+      single: true,
+      ...(game ? { game } : {}),
+      matches,
+    };
+  }
   const isFinal = matches.length === 1;
   return {
     label: stageLabel(matches.length),
@@ -54,23 +71,19 @@ export function nextStageLabel(names: number, perMatch = 2): string {
   return stageLabel(Math.max(1, Math.ceil(names / Math.max(2, perMatch))));
 }
 
-export function isFinalStage(stage: { isThirdPlace: boolean; matches: unknown[] }): boolean {
-  return !stage.isThirdPlace && stage.matches.length === 1;
+type StageShape = { isThirdPlace: boolean; matches: unknown[]; single?: boolean };
+
+export function isFinalStage(stage: StageShape): boolean {
+  return !stage.isThirdPlace && !stage.single && stage.matches.length === 1;
 }
 
-export function winnerLimits(
-  match: BracketMatch,
-  stage: { isThirdPlace: boolean; matches: unknown[] },
-): { min: number; max: number } {
-  if (match.players.length <= 2) return { min: 1, max: 1 };
+export function winnerLimits(match: BracketMatch, stage: StageShape): { min: number; max: number } {
+  if (match.players.length <= 2 || stage.single) return { min: 1, max: 1 };
   if (isFinalStage(stage)) return { min: 1, max: Math.min(4, match.players.length) };
   return { min: 1, max: match.players.length - 1 };
 }
 
-export function isMatchComplete(
-  match: BracketMatch,
-  stage: { isThirdPlace: boolean; matches: unknown[] },
-): boolean {
+export function isMatchComplete(match: BracketMatch, stage: StageShape): boolean {
   const { min, max } = winnerLimits(match, stage);
   return match.winners.length >= min && match.winners.length <= max;
 }
@@ -105,11 +118,7 @@ export function hasPickedWinners(stage: BracketStage): boolean {
   return stage.matches.some((m) => m.players.length > 1 && m.winners.length > 0);
 }
 
-export function toggleWinner(
-  match: BracketMatch,
-  index: number,
-  stage: { isThirdPlace: boolean; matches: unknown[] },
-): BracketMatch {
+export function toggleWinner(match: BracketMatch, index: number, stage: StageShape): BracketMatch {
   if (match.players.length <= 1) return match;
   const { max } = winnerLimits(match, stage);
   if (max === 1) return { ...match, winners: [index] };
@@ -177,6 +186,8 @@ export function serializeStages(stages: BracketStage[]): SavedStage[] {
     isThirdPlace: s.isThirdPlace,
     advance: s.advance,
     perMatch: s.perMatch,
+    ...(s.single ? { single: true } : {}),
+    ...(s.game ? { game: s.game } : {}),
     matches: s.matches.map(serializeMatch),
   }));
 }
@@ -187,6 +198,8 @@ export function deserializeStages(stages: SavedStage[]): BracketStage[] {
     isThirdPlace: !!s.isThirdPlace,
     advance: s.advance ?? 1,
     perMatch: s.perMatch,
+    ...(s.single ? { single: true } : {}),
+    ...(s.game ? { game: s.game } : {}),
     matches: s.matches.map(deserializeMatch),
   }));
 }
@@ -323,4 +336,19 @@ export function replaceInForgeState(
     }));
   }
   return next;
+}
+
+export function roundWinnerLines(stages: BracketStage[]): string[] {
+  return stages
+    .filter((s) => s.single)
+    .flatMap((stage) =>
+      stage.matches
+        .map((match, index) => ({ match, index }))
+        .filter(({ match }) => match.winners.length > 0)
+        .map(({ match, index }) => {
+          const where =
+            stage.matches.length > 1 ? `${stage.label} · Game ${index + 1}` : stage.label;
+          return `🏆 ${where}: ${formatPlatoId(matchWinnerNames(match)[0] ?? '')}`;
+        }),
+    );
 }

@@ -10,7 +10,8 @@ import {
   untracked,
 } from '@angular/core';
 import { computeLeaderboard, scoringGames, standingDetail } from '../../core/utils/scoring';
-import { registrationLabel } from '../../core/utils/tournament';
+import { registrationLabel, usesFreeRounds } from '../../core/utils/tournament';
+import { ChipList } from '../ui/chip-list';
 import { Leaderboard } from './leaderboard';
 import { FormsModule } from '@angular/forms';
 import { Input } from '../forms/input';
@@ -22,6 +23,7 @@ import {
   deserializeStages,
   matchInvolves,
   podiumFromStages,
+  roundWinnerLines,
 } from '../../core/utils/bracket';
 import { BracketStageView } from '../../features/forge/bracket-stage';
 import { Modal } from '../ui/modal';
@@ -30,7 +32,17 @@ import { winnersFromPodium } from '../../core/utils/tournament';
 
 @Component({
   selector: 'tf-matches-modal',
-  imports: [Leaderboard, FormsModule, Modal, BracketStageView, PodiumBox, Field, Input, Button],
+  imports: [
+    ChipList,
+    Leaderboard,
+    FormsModule,
+    Modal,
+    BracketStageView,
+    PodiumBox,
+    Field,
+    Input,
+    Button,
+  ],
   styles: `
     .tools {
       display: flex;
@@ -84,6 +96,10 @@ import { winnersFromPodium } from '../../core/utils/tournament';
         <h3 class="category">⭐ Leaderboard</h3>
         <tf-leaderboard [rows]="leaderboard()" />
       }
+      @if (roundWinners().length) {
+        <h3 class="category">🏆 Round winners</h3>
+        <tf-chip-list [items]="roundWinners()" />
+      }
       @if (winners().length) {
         <tf-podium variant="results" title="🎉 Tournament Results" [winners]="winners()" />
       }
@@ -114,9 +130,17 @@ export class MatchesModal {
         .slice(0, places)
         .map((r, i) => ({ place: i + 1, name: r.name, detail: standingDetail(r) }));
     }
+    if (this.isFreeRounds()) return [];
     const podium = podiumFromStages(this.allStages());
     return podium ? winnersFromPodium(podium) : [];
   });
+  protected readonly isFreeRounds = computed(() => {
+    const t = this.tournament.value();
+    return !!t && usesFreeRounds(t);
+  });
+  protected readonly roundWinners = computed(() =>
+    this.isFreeRounds() ? roundWinnerLines(this.allStages()) : [],
+  );
   protected readonly leaderboard = computed(() => {
     const t = this.tournament.value();
     if (!t?.scoring?.enabled) return [];

@@ -19,9 +19,14 @@ import {
 } from '../../core/config/constants';
 import {
   CUSTOM_GAME,
+  defaultMixedEntries,
+  entryPerMatch,
+  MIXED_GAME,
+  mixedGameNames,
   CUSTOM_GAME_DEF,
   findGame,
   formatById,
+  resolveFormat,
   GAME_OPTIONS,
   GameDef,
   GameSetting,
@@ -31,6 +36,7 @@ import {
 } from '../../core/config/games';
 import { computeLeaderboard, DEFAULT_SCORING, scoringGames } from '../../core/utils/scoring';
 import {
+  MixedGameEntry,
   Organizer,
   ScoringConfig,
   Tournament,
@@ -53,6 +59,7 @@ import { Button } from '../../shared/ui/button';
 import { Card } from '../../shared/ui/card';
 import { ChipList } from '../../shared/ui/chip-list';
 import { Field } from '../../shared/ui/field';
+import { MixedGamesEditor } from './mixed-games-editor';
 
 const POINT_FIELDS = [
   { key: 'villagersWin', label: 'Villagers - win points' },
@@ -96,6 +103,7 @@ const toScoring = (values: ReturnType<typeof pointValues>, enabled: boolean): Sc
     Button,
     AddRow,
     ChipList,
+    MixedGamesEditor,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './tournament-form.html',
@@ -150,6 +158,8 @@ export class TournamentForm {
     () => findGame(this.values().game ?? '') ?? CUSTOM_GAME_DEF,
   );
   protected readonly isCustomGame = computed(() => this.values().game === CUSTOM_GAME);
+  protected readonly isMixed = computed(() => this.values().game === MIXED_GAME);
+  protected readonly mixedEntries = signal<MixedGameEntry[]>(defaultMixedEntries());
   protected readonly modeOptions = computed(() => toOptions(this.gameDef().modes));
   protected readonly formatOptions = computed(() =>
     this.gameDef().formats.map((f) => ({ value: f.id, label: f.label })),
@@ -162,7 +172,8 @@ export class TournamentForm {
   protected readonly tableNote = computed(() => {
     const total = parseInt(String(this.values().slots), 10) || 0;
     const per = playersPerTable(this.selectedFormat());
-    if (per <= 2 || total <= 0 || total % per === 0) return '';
+    if (this.isMixed() || this.gameDef().freeForAll || per <= 2 || total <= 0 || total % per === 0)
+      return '';
     return `💡 ${per} players play each match. ${total} slots isn't a multiple of ${per} - ${suggestedSlots(this.selectedFormat())} is suggested.`;
   });
 
@@ -203,7 +214,7 @@ export class TournamentForm {
   private applySuggestedSlots(): void {
     const def = findGame(this.form.controls.game.value) ?? CUSTOM_GAME_DEF;
     const format = formatById(def, this.form.controls.format.value);
-    this.form.controls.slots.setValue(String(suggestedSlots(format)));
+    this.form.controls.slots.setValue(String(suggestedSlots(format, !!def.freeForAll)));
   }
 
   private applyGameDefaults(): void {
@@ -217,6 +228,9 @@ export class TournamentForm {
     );
     this.settings.set(Object.fromEntries(def.settings.map((s) => [s.label, s.options[0]])));
     this.applySuggestedSlots();
+    if (this.form.controls.game.value === MIXED_GAME && this.mixedEntries().length < 2) {
+      this.mixedEntries.set(defaultMixedEntries());
+    }
   }
 
   constructor() {
@@ -289,16 +303,29 @@ export class TournamentForm {
   protected async submit(): Promise<void> {
     const session = this.auth.session();
     const value = this.form.getRawValue();
+    const mixed = this.isMixed() ? this.mixedEntries() : [];
+    if (this.isMixed() && mixed.length < 2) {
+      this.toast.show('Add at least 2 games for a mixed tournament.');
+      return;
+    }
+    const first = mixed[0];
     const input: TournamentInput = {
       title: value.title,
-      game: this.isCustomGame() ? value.customGame.trim() : value.game,
+      game: this.isMixed()
+        ? mixedGameNames(mixed)
+        : this.isCustomGame()
+          ? value.customGame.trim()
+          : value.game,
       slots: value.slots,
-      teamSize: this.selectedFormat().teamSize,
-      gameMode: value.gameMode,
-      format: this.selectedFormat().id,
-      playersPerMatch: this.selectedFormat().perMatch,
-      gameSettings: { ...this.settings() },
-      scoring: toScoring(value.points, !!this.gameDef().scoring),
+      teamSize: this.isMixed() ? 1 : this.selectedFormat().teamSize,
+      gameMode: this.isMixed() ? '' : value.gameMode,
+      format: this.isMixed() ? first.format : this.selectedFormat().id,
+      playersPerMatch: this.isMixed()
+        ? (entryPerMatch(first) ?? 2)
+        : this.selectedFormat().perMatch,
+      gameSettings: this.isMixed() ? {} : { ...this.settings() },
+      mixed,
+      scoring: toScoring(value.points, !this.isMixed() && !!this.gameDef().scoring),
       announcement: value.announcement,
       details: value.details,
       sponsor: value.sponsor,
@@ -352,20 +379,22 @@ export class TournamentForm {
     this.applyGameDefaults();
     this.hosts.set([]);
     this.managerIds.set([]);
+    this.mixedEntries.set(defaultMixedEntries());
   }
 
   private populate(t: Tournament): void {
     const zone = t.createdTZ || DEFAULT_TIMEZONE;
     const local = utcToLocalParts(t.startUTC, zone);
-    const known = findGame(t.game);
+    const mixedTournament = t.mixed.length > 1;
+    const known = mixedTournament ? null : findGame(t.game);
     const scoring = t.scoring;
     this.populating = true;
     this.form.setValue({
       title: t.title,
-      game: known ? known.name : CUSTOM_GAME,
-      customGame: known ? '' : t.game,
+      game: mixedTournament ? MIXED_GAME : known ? known.name : CUSTOM_GAME,
+      customGame: known || mixedTournament ? '' : t.game,
       gameMode: t.gameMode,
-      format: t.format,
+      format: resolveFormat(known ?? CUSTOM_GAME_DEF, t).id,
       slots: String(t.slots),
       points: pointValues({ ...DEFAULT_SCORING, ...scoring }),
       date: local.date,
@@ -384,6 +413,7 @@ export class TournamentForm {
       ...Object.fromEntries(def.settings.map((st) => [st.label, st.options[0]])),
       ...t.gameSettings,
     });
+    this.mixedEntries.set(mixedTournament ? t.mixed.map((m) => ({ ...m })) : defaultMixedEntries());
     this.setWinners(t.winners);
     this.hosts.set([...t.hosts]);
     this.managerIds.set([...t.managerIds]);

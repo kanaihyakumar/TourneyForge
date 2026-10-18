@@ -51,7 +51,9 @@ export class TourCard {
   private readonly text = viewChild<ElementRef<HTMLElement>>('text');
 
   protected readonly hasBracket = computed(
-    () => !!this.tournament().forgeState?.bracket?.stages?.length,
+    () =>
+      !!this.tournament().forgeState?.bracket?.stages?.length &&
+      !['completed', 'cancelled'].includes(this.tournament().status),
   );
   protected readonly canManage = computed(() => canManage(this.auth.session(), this.tournament()));
   protected readonly full = computed(() => isFull(this.tournament()));

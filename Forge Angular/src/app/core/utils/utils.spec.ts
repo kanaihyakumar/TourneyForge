@@ -12,6 +12,7 @@ import {
   toggleWinner,
   tableSizes,
   fullTableTotals,
+  roundWinnerLines,
   isMatchComplete,
   podiumFromSavedBracket,
   podiumFromStages,
@@ -27,10 +28,17 @@ import {
   computeStatus,
   findDuplicateRegistration,
   podiumRows,
+  usesFreeRounds,
   visibleOrganizers,
   withMeta,
 } from './tournament';
-import { GAME_CATALOG, playersPerTable, suggestedSlots } from '../config/games';
+import {
+  findGame,
+  GAME_CATALOG,
+  playersPerTable,
+  resolveFormat,
+  suggestedSlots,
+} from '../config/games';
 import { computeLeaderboard, isAdvancing, scoringGames } from './scoring';
 import {
   defaultCountdown,
@@ -497,17 +505,19 @@ describe('suggested slots', () => {
   it('suggests a whole number of tables for every game format', () => {
     const slots = (game: string, id: string) => {
       const format = GAME_CATALOG.find((g) => g.name === game)!.formats.find((f) => f.id === id)!;
-      return suggestedSlots(format);
+      return suggestedSlots(format, !!findGame(game)?.freeForAll);
     };
     expect(slots('Werewolf', '9p')).toBe(36);
     expect(slots('Werewolf', '7p')).toBe(28);
     expect(slots('Chess', '1v1')).toBe(32);
     expect(slots('Carrom', '2v2')).toBe(32);
     expect(slots('Ocho', '6p')).toBe(24);
-    expect(slots('Bingo', '15p')).toBe(30);
+    expect(slots('Bingo', '15p')).toBe(15);
+    expect(slots('Bounce', '16p')).toBe(16);
+    expect(slots('Bingo', '4p')).toBe(32);
     GAME_CATALOG.forEach((game) =>
       game.formats.forEach((format) => {
-        const total = suggestedSlots(format);
+        const total = suggestedSlots(format, !!game.freeForAll);
         expect(total % playersPerTable(format)).toBe(0);
         expect(total).toBeGreaterThanOrEqual(playersPerTable(format));
       }),
@@ -622,5 +632,71 @@ describe('suggested slots', () => {
     };
     expect(withMeta('a', { ...base, game: 'Werewolf' }).scoring?.enabled).toBe(true);
     expect(withMeta('b', { ...base, game: 'Chess' }).scoring).toBeUndefined();
+  });
+});
+
+describe('player count formats', () => {
+  it('labels plain counts as players, not 1v1', () => {
+    const bingo = findGame('Bingo')!;
+    expect(bingo.formats.map((f) => f.label)).toEqual([
+      '2 players',
+      '4 players',
+      '8 players',
+      '15 players',
+    ]);
+    expect(findGame('Chess')!.formats.map((f) => f.label)).toEqual(['1v1']);
+    expect(findGame('Pool')!.formats.map((f) => f.label)).toEqual(['1v1', '2v2 (teams of 2)']);
+    expect(bingo.freeForAll).toBe(true);
+    expect(findGame('Chess')!.freeForAll).toBe(false);
+  });
+
+  it('maps a legacy saved 1v1 format onto the current format list', () => {
+    const bingo = findGame('Bingo')!;
+    expect(resolveFormat(bingo, { format: '1v1', teamSize: 1, playersPerMatch: 2 }).id).toBe('2p');
+    expect(resolveFormat(bingo, { format: '15p' }).id).toBe('15p');
+    expect(resolveFormat(findGame('Carrom')!, { format: '2v2', teamSize: 2 }).id).toBe('2v2');
+  });
+});
+
+describe('free-for-all rounds', () => {
+  const players = Array.from({ length: 15 }, (_, i) => `P${i}`);
+
+  it('has a single winner per table whatever the table size', () => {
+    const stage = newStage(players, 15, 1, 1);
+    expect(stage.label).toBe('Round 1');
+    expect(stage.single).toBe(true);
+    expect(stage.matches.length).toBe(1);
+    expect(stage.matches[0].players.length).toBe(15);
+    expect(isMatchComplete(stage.matches[0], stage)).toBe(false);
+    let match = toggleWinner(stage.matches[0], 3, stage);
+    match = toggleWinner(match, 7, stage);
+    expect(match.winners).toEqual([7]);
+    expect(isMatchComplete(match, stage)).toBe(true);
+  });
+
+  it('keeps single-winner rounds through saving and lists the round winners', () => {
+    const first = newStage(players, 15, 1, 1);
+    first.matches[0].winners = [2];
+    const second = newStage(['P2', 'P5', 'P9', 'P11', 'P14', 'P0', 'P1', 'P3'], 8, 1, 2);
+    second.matches[0].winners = [0];
+    const stages = deserializeStages(serializeStages([first, second]));
+    expect(stages.every((s) => s.single)).toBe(true);
+    expect(stages[1].matches[0].players.length).toBe(8);
+    expect(roundWinnerLines(stages)).toEqual([
+      `🏆 Round 1: @${first.matches[0].players[2]}`,
+      `🏆 Round 2: @${second.matches[0].players[0]}`,
+    ]);
+  });
+
+  it('stores the game on mixed rounds and treats mixed tournaments as free rounds', () => {
+    const stage = newStage(players, 15, 1, 1, 'Bingo');
+    expect(stage.game).toBe('Bingo');
+    expect(stage.label).toBe('Round 1 · Bingo');
+    const [back] = deserializeStages(serializeStages([stage]));
+    expect(back.game).toBe('Bingo');
+    const entry = { game: 'Bingo', gameMode: '', format: '15p', gameSettings: {} };
+    expect(usesFreeRounds({ game: 'Bingo + Ocho', mixed: [entry, entry] })).toBe(true);
+    expect(usesFreeRounds({ game: 'Chess', mixed: [] })).toBe(false);
+    expect(usesFreeRounds({ game: 'Bingo', mixed: [] })).toBe(true);
   });
 });

@@ -178,4 +178,47 @@ describe('DashboardPage', () => {
     expect((boxes[0].querySelector('input') as HTMLInputElement).checked).toBe(true);
     expect((boxes[0].querySelector('input') as HTMLInputElement).disabled).toBe(true);
   });
+
+  it('shows Current matches only for tournaments that are not completed', async () => {
+    const forgeState = {
+      members: ['Alice', 'Bob'],
+      bracket: {
+        thirdPlaceEnabled: false,
+        stages: [
+          {
+            label: 'Final Match',
+            isThirdPlace: false,
+            matches: [{ p1Name: 'Alice', p2Name: 'Bob', winnerName: null }],
+          },
+        ],
+      },
+    };
+    const live = {
+      ...tournament(),
+      status: 'upcoming' as const,
+      id: 'live',
+      title: 'Live Cup',
+      startUTC: Date.now() + 3600_000,
+      forgeState,
+    };
+    const done = {
+      ...live,
+      id: 'done',
+      title: 'Done Cup',
+      completed: true,
+      status: 'completed' as const,
+    };
+    TestBed.overrideProvider(TournamentService, {
+      useValue: { list: () => Promise.resolve([live, done]), get, update, create },
+    });
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+
+    const rows = Array.from(root.querySelectorAll('tf-tournament-list tf-list-row'));
+    expect(rows.length).toBe(2);
+    const row = (title: string) => rows.find((r) => r.textContent?.includes(title))!;
+    expect(row('Live Cup').textContent).toContain('Current matches');
+    expect(row('Done Cup').textContent).not.toContain('Current matches');
+  });
 });

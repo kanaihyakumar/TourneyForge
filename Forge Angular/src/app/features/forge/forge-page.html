@@ -164,7 +164,19 @@
       </div>
     } @else if (!store.lastStageComplete()) {
       <p class="field-note">👆 Pick a winner for every match above to unlock the next match set.</p>
+    } @else if (store.freeRounds()) {
+      <tf-next-round-planner />
     }
+  }
+
+  @if (store.freeRounds() && store.roundWinnerLines().length) {
+    <div class="round-winners">
+      <h3>🏆 Round winners</h3>
+      <tf-chip-list [items]="store.roundWinnerLines()" />
+      <div class="btn-row">
+        <tf-chunk-copy [chunks]="roundWinnerChunks()" label="Copy round winners" tone="accent" />
+      </div>
+    </div>
   }
 
   @if (store.winners().length) {

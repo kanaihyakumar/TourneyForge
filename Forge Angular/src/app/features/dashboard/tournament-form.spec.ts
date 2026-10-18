@@ -48,7 +48,7 @@ describe('TournamentForm game options', () => {
     const root = fixture.nativeElement as HTMLElement;
     await fixture.whenStable();
 
-    expect(options(root, 'tf_format')).toEqual(['1v1', '2v2']);
+    expect(options(root, 'tf_format')).toEqual(['2p', '2v2']);
     expect(options(root, 'tf_gameMode')).toEqual(['Turn-based', 'Live']);
 
     await choose(root, 'tf_game', 'Bullsh!t', fixture);
@@ -114,5 +114,91 @@ describe('TournamentForm game options', () => {
       },
     });
     expect(Object.keys(input.gameSettings)).toEqual(['All random roles', 'Language']);
+  });
+
+  it('labels count formats as players and starts Bingo and Bounce with one full game', async () => {
+    const fixture = TestBed.createComponent(TournamentForm);
+    const root = fixture.nativeElement as HTMLElement;
+    await fixture.whenStable();
+    const slots = () => (root.querySelector('#tf_slots') as HTMLInputElement).value;
+    const labels = (id: string) =>
+      Array.from((root.querySelector('#' + id) as HTMLSelectElement).options).map((o) =>
+        o.text.trim(),
+      );
+
+    await choose(root, 'tf_game', 'Bingo', fixture);
+    expect(options(root, 'tf_format')).toEqual(['2p', '4p', '8p', '15p']);
+    expect(labels('tf_format')).toEqual(['2 players', '4 players', '8 players', '15 players']);
+    await choose(root, 'tf_format', '15p', fixture);
+    expect(slots()).toBe('15');
+    expect(root.textContent).not.toContain("isn't a multiple");
+    await choose(root, 'tf_format', '8p', fixture);
+    expect(slots()).toBe('8');
+    await choose(root, 'tf_format', '4p', fixture);
+    expect(slots()).toBe('32');
+
+    await choose(root, 'tf_game', 'Bounce', fixture);
+    expect(labels('tf_format')).toEqual([
+      '2 players',
+      '3 players',
+      '4 players',
+      '6 players',
+      '8 players',
+      '16 players',
+    ]);
+    await choose(root, 'tf_format', '16p', fixture);
+    expect(slots()).toBe('16');
+  });
+
+  it('builds a mixed tournament from a list of games', async () => {
+    const fixture = TestBed.createComponent(TournamentForm);
+    const root = fixture.nativeElement as HTMLElement;
+    await fixture.whenStable();
+    const click = async (needle: string) => {
+      Array.from(root.querySelectorAll('button'))
+        .find((b) => b.textContent?.includes(needle))
+        ?.click();
+      await fixture.whenStable();
+    };
+
+    expect(root.querySelector('tf-mixed-games-editor')).toBeNull();
+    await choose(root, 'tf_game', '__mixed__', fixture);
+    expect(root.querySelector('tf-mixed-games-editor')).not.toBeNull();
+    expect(root.querySelector('#tf_format')).toBeNull();
+    expect(root.querySelectorAll('.entry').length).toBe(2);
+
+    await click('Add game');
+    expect(root.querySelectorAll('.entry').length).toBe(3);
+    await choose(root, 'mix_game_2', 'Bounce', fixture);
+    (root.querySelectorAll('button[aria-label="Move up"]')[2] as HTMLButtonElement).click();
+    await fixture.whenStable();
+    expect((root.querySelector('#mix_game_1') as HTMLSelectElement).value).toBe('Bounce');
+
+    const set = (id: string, value: string) => {
+      const el = root.querySelector('#' + id) as HTMLInputElement;
+      el.value = value;
+      el.dispatchEvent(new Event('input'));
+    };
+    set('tf_title', 'Mix Night');
+    set('tf_announcement', 'Hype');
+    set('tf_date', '2026-01-15');
+    set('tf_time', '10:00');
+    (root.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    const input = create.mock.calls.at(-1)?.[0];
+    expect(input.game).toBe('Bingo + Bounce + Ocho');
+    expect(input.teamSize).toBe(1);
+    expect(input.mixed.map((m: { game: string }) => m.game)).toEqual(['Bingo', 'Bounce', 'Ocho']);
+  });
+
+  it('requires at least two games for a mixed tournament', async () => {
+    const fixture = TestBed.createComponent(TournamentForm);
+    const root = fixture.nativeElement as HTMLElement;
+    await fixture.whenStable();
+    await choose(root, 'tf_game', '__mixed__', fixture);
+    const remove = () =>
+      (root.querySelector('button[aria-label="Remove game"]') as HTMLButtonElement).disabled;
+    expect(remove()).toBe(true);
   });
 });

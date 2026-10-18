@@ -1,4 +1,4 @@
-import { SelectOption } from '../models/models';
+import { MixedGameEntry, SelectOption } from '../models/models';
 
 export interface GameFormat {
   id: string;
@@ -18,6 +18,7 @@ export interface GameDef {
   formats: GameFormat[];
   settings: GameSetting[];
   scoring?: boolean;
+  freeForAll?: boolean;
 }
 
 interface RawGame {
@@ -435,10 +436,12 @@ const RAW_GAMES: RawGame[] = [
   },
 ];
 
+const FREE_FOR_ALL_GAMES = ['Bingo', 'Bounce', 'The Island', 'Conspiracy'];
+
 const FALLBACK_FORMATS = ['2', '3', '4', '2v2'];
 
 export function parseFormat(token: string): GameFormat {
-  if (token === '2' || token === '1v1') {
+  if (token === '1v1') {
     return { id: '1v1', label: '1v1', perMatch: 2, teamSize: 1 };
   }
   if (token === '2v2') {
@@ -458,6 +461,7 @@ export const GAME_CATALOG: GameDef[] = RAW_GAMES.map((raw) => ({
   formats: (raw.formats ?? FALLBACK_FORMATS).map(parseFormat),
   settings: raw.settings ?? [],
   scoring: raw.name === 'Werewolf',
+  freeForAll: FREE_FOR_ALL_GAMES.includes(raw.name),
 }));
 
 export const CUSTOM_GAME = '__custom__';
@@ -469,8 +473,11 @@ export const CUSTOM_GAME_DEF: GameDef = {
   settings: [],
 };
 
+export const MIXED_GAME = '__mixed__';
+
 export const GAME_OPTIONS: SelectOption[] = [
   ...GAME_CATALOG.map((g) => ({ value: g.name, label: g.name })),
+  { value: MIXED_GAME, label: '🎲 Mixed (several games)' },
   { value: CUSTOM_GAME, label: 'Other (type a name)' },
 ];
 
@@ -491,8 +498,65 @@ export function playersPerTable(format: GameFormat): number {
   return format.perMatch * format.teamSize;
 }
 
-export function suggestedSlots(format: GameFormat, target = 32): number {
+export function suggestedSlots(format: GameFormat, freeForAll = false): number {
   const per = playersPerTable(format);
+  if (freeForAll && per >= 6) return per;
+  const target = 32;
   const tables = 2 ** Math.max(0, Math.round(Math.log2(target / per)));
   return per * tables;
+}
+
+export function resolveFormat(
+  game: GameDef,
+  saved: { format?: string; teamSize?: number; playersPerMatch?: number },
+): GameFormat {
+  return (
+    game.formats.find((f) => f.id === saved.format) ??
+    game.formats.find(
+      (f) => f.perMatch === (saved.playersPerMatch ?? 2) && f.teamSize === (saved.teamSize ?? 1),
+    ) ??
+    game.formats[0]
+  );
+}
+
+export function roundSizeOptions(game: GameDef | null, current: number): number[] {
+  const sizes = game ? game.formats.filter((f) => f.teamSize === 1).map((f) => f.perMatch) : [];
+  return [...new Set([...sizes, current])].sort((a, b) => a - b);
+}
+
+export function individualFormats(game: GameDef): GameFormat[] {
+  return game.formats.filter((f) => f.teamSize === 1);
+}
+
+export const MIX_GAMES: GameDef[] = GAME_CATALOG.filter(
+  (g) => !g.scoring && individualFormats(g).length > 0,
+);
+
+export const MIX_GAME_OPTIONS: SelectOption[] = MIX_GAMES.map((g) => ({
+  value: g.name,
+  label: g.name,
+}));
+
+export function newMixedEntry(name: string): MixedGameEntry {
+  const game = MIX_GAMES.find((g) => g.name === name) ?? MIX_GAMES[0];
+  return {
+    game: game.name,
+    gameMode: game.modes[0] ?? '',
+    format: individualFormats(game)[0].id,
+    gameSettings: Object.fromEntries(game.settings.map((s) => [s.label, s.options[0]])),
+  };
+}
+
+export function defaultMixedEntries(): MixedGameEntry[] {
+  return [newMixedEntry('Bingo'), newMixedEntry('Ocho')];
+}
+
+export function entryPerMatch(entry: MixedGameEntry | null | undefined): number | null {
+  const game = entry ? findGame(entry.game) : null;
+  const format = game ? game.formats.find((f) => f.id === entry?.format) : null;
+  return format ? format.perMatch : null;
+}
+
+export function mixedGameNames(entries: MixedGameEntry[]): string {
+  return entries.map((e) => e.game).join(' + ');
 }

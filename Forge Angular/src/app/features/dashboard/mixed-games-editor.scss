@@ -1,0 +1,29 @@
+@use 'mixins' as *;
+
+:host {
+  display: block;
+}
+
+.intro {
+  margin: 0 0 12px;
+}
+
+.entry {
+  @include neu-well(4px);
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-size: 0.92rem;
+}
+
+.tools {
+  display: flex;
+  gap: 6px;
+}

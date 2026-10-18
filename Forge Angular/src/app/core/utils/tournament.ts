@@ -52,6 +52,7 @@ export function withMeta(id: string, data: TournamentData): Tournament {
     format: data.format ?? (teamSize === 2 ? '2v2' : '1v1'),
     playersPerMatch: data.playersPerMatch ?? 2,
     gameSettings: data.gameSettings ?? {},
+    mixed: data.mixed ?? [],
     ...(findGame(data.game)?.scoring
       ? { scoring: { ...DEFAULT_SCORING, ...data.scoring, enabled: true } }
       : {}),
@@ -154,4 +155,8 @@ export function formatLabelFor(
     label ??
     (t.teamSize === 2 ? '2v2' : t.playersPerMatch > 2 ? `${t.playersPerMatch} players` : '1v1')
   );
+}
+
+export function usesFreeRounds(t: Pick<Tournament, 'game' | 'mixed'>): boolean {
+  return (t.mixed?.length ?? 0) > 1 || !!findGame(t.game)?.freeForAll;
 }

@@ -1,0 +1,89 @@
+<p class="field-note intro">
+  Games are played in this order, one round each. For every round you pick who plays on the Forge
+  page. Team (2v2) formats and Werewolf are not available in a mixed tournament.
+</p>
+@for (entry of entries(); track $index; let i = $index) {
+  <div class="entry">
+    <div class="head">
+      <strong>Game {{ i + 1 }}</strong>
+      <span class="tools">
+        <button
+          type="button"
+          tfButton
+          size="sm"
+          [disabled]="i === 0"
+          (click)="move(i, -1)"
+          aria-label="Move up"
+        >
+          ↑
+        </button>
+        <button
+          type="button"
+          tfButton
+          size="sm"
+          [disabled]="i === entries().length - 1"
+          (click)="move(i, 1)"
+          aria-label="Move down"
+        >
+          ↓
+        </button>
+        <button
+          type="button"
+          tfButton
+          variant="danger"
+          size="sm"
+          [disabled]="entries().length <= 2"
+          (click)="remove(i)"
+          aria-label="Remove game"
+        >
+          🗑️
+        </button>
+      </span>
+    </div>
+    <div class="form-grid">
+      <tf-field label="Game" [for]="'mix_game_' + i">
+        <tf-select
+          [inputId]="'mix_game_' + i"
+          [options]="gameOptions"
+          [ngModel]="entry.game"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="changeGame(i, $event)"
+        />
+      </tf-field>
+      @if (modes(entry).length) {
+        <tf-field label="Game mode" [for]="'mix_mode_' + i">
+          <tf-select
+            [inputId]="'mix_mode_' + i"
+            [options]="modes(entry)"
+            [ngModel]="entry.gameMode"
+            [ngModelOptions]="{ standalone: true }"
+            (ngModelChange)="setMode(i, $event)"
+          />
+        </tf-field>
+      }
+      <tf-field label="Players per game" [for]="'mix_format_' + i">
+        <tf-select
+          [inputId]="'mix_format_' + i"
+          [options]="formats(entry)"
+          [ngModel]="entry.format"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="setFormat(i, $event)"
+        />
+      </tf-field>
+      @for (setting of settings(entry); track setting.label; let s = $index) {
+        <tf-field [label]="setting.label" [for]="'mix_setting_' + i + '_' + s">
+          <tf-select
+            [inputId]="'mix_setting_' + i + '_' + s"
+            [options]="settingOptions(setting)"
+            [ngModel]="settingValue(entry, setting)"
+            [ngModelOptions]="{ standalone: true }"
+            (ngModelChange)="setSetting(i, setting.label, $event)"
+          />
+        </tf-field>
+      }
+    </div>
+  </div>
+}
+<div class="btn-row">
+  <button type="button" tfButton size="sm" (click)="add()">+ Add game</button>
+</div>

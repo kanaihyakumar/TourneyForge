@@ -376,4 +376,151 @@ describe('ForgePage', () => {
     expect(root.querySelector('tf-leaderboard')?.textContent).not.toContain('2 pts');
     expect(fixture.debugElement.injector.get(ForgeStore).games()).toEqual([]);
   });
+
+  it('runs Bingo as rounds with one winner per game and a free choice of next players', async () => {
+    const ids = Array.from({ length: 15 }, (_, i) => `p${i}`);
+    current = withMeta('t1', {
+      title: 'Bingo Night',
+      game: 'Bingo',
+      format: '15p',
+      playersPerMatch: 15,
+      slots: 15,
+      announcement: '',
+      details: '',
+      prizeText: '',
+      sponsor: '',
+      startUTC: Date.now() + 3600_000,
+      createdTZ: 'UTC',
+      organizerId: 'o1',
+      organizerName: 'Bella',
+      registrations: ids.map((platoId) => ({ platoId, registeredAt: 1 })),
+      createdAt: 0,
+      updatedAt: 0,
+    });
+    const fixture = TestBed.createComponent(ForgePage);
+    const root = fixture.nativeElement as HTMLElement;
+    await fixture.whenStable();
+    await fixture.whenStable();
+    const button = (needle: string) =>
+      Array.from(root.querySelectorAll('button')).find((b) => b.textContent?.includes(needle));
+
+    button('Start Bracket')?.click();
+    await fixture.whenStable();
+    let stages = root.querySelectorAll('tf-bracket-stage');
+    expect(stages.length).toBe(1);
+    expect(stages[0].textContent).toContain('Round 1');
+    expect(stages[0].querySelectorAll('.pick').length).toBe(15);
+    expect(root.textContent).not.toContain('Tournament Results');
+
+    (stages[0].querySelectorAll('.pick')[4] as HTMLElement).click();
+    (stages[0].querySelectorAll('.pick')[9] as HTMLElement).click();
+    await fixture.whenStable();
+    expect(stages[0].querySelectorAll('.is-winner').length).toBe(1);
+
+    expect(root.querySelector('tf-next-round-planner')).not.toBeNull();
+    expect(root.querySelector('tf-next-round-planner')?.textContent).toContain(
+      '15 players - 1 game of 15',
+    );
+    expect(root.querySelector('tf-podium')).toBeNull();
+
+    button('Clear')?.click();
+    await fixture.whenStable();
+    const planner = root.querySelector('tf-next-round-planner') as HTMLElement;
+    for (const i of [0, 2, 4, 6, 8, 10, 12, 14]) {
+      (planner.querySelectorAll('tf-checkbox input')[i] as HTMLInputElement).click();
+    }
+    const size = planner.querySelector('#roundSize') as HTMLSelectElement;
+    size.value = '8';
+    size.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+    expect(planner.textContent).toContain('8 players - 1 game of 8 players');
+
+    button('Start Round 2')?.click();
+    await fixture.whenStable();
+    stages = root.querySelectorAll('tf-bracket-stage');
+    expect(stages.length).toBe(2);
+    expect(stages[1].textContent).toContain('Round 2');
+    expect(stages[1].querySelectorAll('.pick').length).toBe(8);
+
+    (stages[1].querySelectorAll('.pick')[0] as HTMLElement).click();
+    await fixture.whenStable();
+    expect(root.querySelector('tf-next-round-planner')).not.toBeNull();
+    expect(root.querySelector('tf-next-round-planner')?.textContent).toContain('Round 3');
+    const winners = root.querySelector('.round-winners')?.textContent ?? '';
+    expect(winners).toContain('Round 1');
+    expect(winners).toContain('Round 2');
+
+    button('Winners only')?.click();
+    await fixture.whenStable();
+    expect(root.querySelector('tf-next-round-planner')?.textContent).toContain(
+      'Select at least 2 players.',
+    );
+    button('Same players again')?.click();
+    await fixture.whenStable();
+    expect(root.querySelector('tf-next-round-planner')?.textContent).toContain(
+      '8 players - 1 game of 8 players.',
+    );
+    expect(saveForgeState).toHaveBeenCalled();
+  });
+
+  it('runs a mixed tournament one game per round and suggests the next game', async () => {
+    const ids = Array.from({ length: 15 }, (_, i) => `p${i}`);
+    const entry = (game: string, format: string) => ({
+      game,
+      gameMode: '',
+      format,
+      gameSettings: {},
+    });
+    current = withMeta('t1', {
+      title: 'Mix Night',
+      game: 'Bingo + Ocho + Bounce',
+      format: '15p',
+      playersPerMatch: 15,
+      slots: 15,
+      mixed: [entry('Bingo', '15p'), entry('Ocho', '4p'), entry('Bounce', '8p')],
+      announcement: '',
+      details: '',
+      prizeText: '',
+      sponsor: '',
+      startUTC: Date.now() + 3600_000,
+      createdTZ: 'UTC',
+      organizerId: 'o1',
+      organizerName: 'Bella',
+      registrations: ids.map((platoId) => ({ platoId, registeredAt: 1 })),
+      createdAt: 0,
+      updatedAt: 0,
+    });
+    const fixture = TestBed.createComponent(ForgePage);
+    const root = fixture.nativeElement as HTMLElement;
+    await fixture.whenStable();
+    await fixture.whenStable();
+    const button = (needle: string) =>
+      Array.from(root.querySelectorAll('button')).find((b) => b.textContent?.includes(needle));
+
+    button('Start Bracket')?.click();
+    await fixture.whenStable();
+    let stages = root.querySelectorAll('tf-bracket-stage');
+    expect(stages[0].textContent).toContain('Round 1 · Bingo');
+    (stages[0].querySelectorAll('.pick')[3] as HTMLElement).click();
+    await fixture.whenStable();
+
+    const planner = root.querySelector('tf-next-round-planner') as HTMLElement;
+    const game = planner.querySelector('#roundGame') as HTMLSelectElement;
+    expect(game.value).toBe('Ocho');
+    expect(root.querySelector('tf-podium')).toBeNull();
+
+    button('Winners only')?.click();
+    button('Same players again')?.click();
+    await fixture.whenStable();
+    const size = planner.querySelector('#roundSize') as HTMLSelectElement;
+    expect(size.value).toBe('4');
+    expect(planner.textContent).toContain('15 players');
+
+    button('Start Round 2')?.click();
+    await fixture.whenStable();
+    stages = root.querySelectorAll('tf-bracket-stage');
+    expect(stages.length).toBe(2);
+    expect(stages[1].textContent).toContain('Round 2 · Ocho');
+    expect(root.querySelector('.round-winners')?.textContent).toContain('Round 1');
+  });
 });

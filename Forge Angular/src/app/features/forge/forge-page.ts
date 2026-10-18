@@ -28,6 +28,7 @@ import { ChunkCopy } from '../../shared/ui/chunk-copy';
 import { Card } from '../../shared/ui/card';
 import { ChipList } from '../../shared/ui/chip-list';
 import { PodiumBox } from '../../shared/ui/podium';
+import { NextRoundPlanner } from './next-round-planner';
 import { ScoringPanel } from './scoring-panel';
 import { BracketStageView } from './bracket-stage';
 import { ForgeStore } from './forge-store';
@@ -52,6 +53,7 @@ import { ForgeStore } from './forge-store';
     ChunkCopy,
     BracketStageView,
     ScoringPanel,
+    NextRoundPlanner,
     ParticipantModal,
     MessagesModal,
   ],
@@ -65,6 +67,9 @@ export class ForgePage {
   protected readonly store = inject(ForgeStore);
 
   protected readonly memberLabels = computed(() => this.store.members().map(formatPlatoId));
+  protected readonly roundWinnerChunks = computed(() =>
+    chunkText(this.store.roundWinnerLines(), '\n', '🏆 Round winners'),
+  );
   protected readonly memberChunks = computed(() => chunkText(this.memberLabels(), ', '));
   protected readonly memberCountText = computed(() => {
     const count = this.store.members().length;

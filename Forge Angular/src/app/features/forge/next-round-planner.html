@@ -1,0 +1,57 @@
+<div class="planner">
+  <h3>🎯 Round {{ roundNumber() }}{{ roundGameLabel() }} - choose who plays</h3>
+  <p class="field-note">
+    Pick any players you want, including the same players again or new ones, and how many play each
+    game.
+  </p>
+  <div class="btn-row quick">
+    <button type="button" tfButton size="sm" (click)="store.planSamePlayers()">
+      🔁 Same players again
+    </button>
+    <button type="button" tfButton size="sm" (click)="store.planWinners()">🏆 Winners only</button>
+    <button type="button" tfButton size="sm" (click)="store.planEveryone()">👥 Everyone</button>
+    <button type="button" tfButton size="sm" (click)="store.planNobody()">Clear</button>
+  </div>
+  @if (store.isMixed()) {
+    <tf-field label="Game for this round" for="roundGame">
+      <tf-select
+        inputId="roundGame"
+        [options]="gameOptions()"
+        [ngModel]="store.plannedGame() ?? ''"
+        (ngModelChange)="store.planGame($event)"
+      />
+    </tf-field>
+  }
+  <tf-field label="Players per game" for="roundSize">
+    <tf-select
+      inputId="roundSize"
+      [options]="sizeOptions()"
+      [ngModel]="'' + store.plannedSize()"
+      (ngModelChange)="store.nextPerMatch.set(+$event)"
+    />
+  </tf-field>
+  <div class="cluster picks">
+    @for (name of store.members(); track name) {
+      <tf-checkbox
+        variant="chip"
+        [ngModel]="isSelected(name)"
+        [ngModelOptions]="{ standalone: true }"
+        (ngModelChange)="store.togglePlanned(name, $event)"
+      >
+        {{ name | platoId }}
+      </tf-checkbox>
+    }
+  </div>
+  <p class="field-note">{{ summary() }}</p>
+  <div class="btn-row">
+    <button
+      type="button"
+      tfButton
+      variant="primary"
+      [disabled]="count() < 2"
+      (click)="store.advanceFree()"
+    >
+      ▶ Start Round {{ roundNumber() }}
+    </button>
+  </div>
+</div>

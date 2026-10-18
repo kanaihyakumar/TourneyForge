@@ -16,16 +16,28 @@ import { Tag } from '../ui/tag';
   imports: [Tag],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <tf-tag>🎮 {{ tournament().game }}</tf-tag>
-    @if (tournament().gameMode) {
-      <tf-tag>🕹️ {{ tournament().gameMode }}</tf-tag>
-    }
-    @if (tournament().teamSize === 2 || tournament().playersPerMatch > 2) {
-      <tf-tag>🎲 {{ formatLabel() }}</tf-tag>
-    }
-    @if (showSettings()) {
-      @for (item of settingsList(); track item.label) {
-        <tf-tag>⚙️ {{ item.label }}: {{ item.value }}</tf-tag>
+    @if (mixedTags().length) {
+      <tf-tag>🎲 Mixed</tf-tag>
+      @for (entry of mixedTags(); track $index) {
+        <tf-tag>🎮 {{ entry.text }}</tf-tag>
+        @if (showSettings()) {
+          @for (item of entry.settings; track item.label) {
+            <tf-tag>⚙️ {{ entry.game }} · {{ item.label }}: {{ item.value }}</tf-tag>
+          }
+        }
+      }
+    } @else {
+      <tf-tag>🎮 {{ tournament().game }}</tf-tag>
+      @if (tournament().gameMode) {
+        <tf-tag>🕹️ {{ tournament().gameMode }}</tf-tag>
+      }
+      @if (tournament().teamSize === 2 || tournament().playersPerMatch > 2) {
+        <tf-tag>🎲 {{ formatLabel() }}</tf-tag>
+      }
+      @if (showSettings()) {
+        @for (item of settingsList(); track item.label) {
+          <tf-tag>⚙️ {{ item.label }}: {{ item.value }}</tf-tag>
+        }
       }
     }
     @if (tournament().scoring?.enabled) {
@@ -49,6 +61,24 @@ export class TournamentTags {
   readonly showSettings = input(false, { transform: booleanAttribute });
 
   protected readonly formatLabel = computed(() => formatLabelFor(this.tournament()));
+  protected readonly mixedTags = computed(() => {
+    const entries = this.tournament().mixed;
+    if (entries.length < 2) return [];
+    return entries.map((entry) => {
+      const label = formatLabelFor({
+        game: entry.game,
+        format: entry.format,
+        teamSize: 1,
+        playersPerMatch: 2,
+      });
+      const mode = entry.gameMode ? ` · ${entry.gameMode}` : '';
+      return {
+        game: entry.game,
+        text: `${entry.game}${mode} · ${label}`,
+        settings: Object.entries(entry.gameSettings).map(([k, value]) => ({ label: k, value })),
+      };
+    });
+  });
   protected readonly settingsList = computed(() =>
     Object.entries(this.tournament().gameSettings).map(([label, value]) => ({ label, value })),
   );

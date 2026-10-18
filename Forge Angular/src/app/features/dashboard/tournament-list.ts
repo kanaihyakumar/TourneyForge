@@ -36,7 +36,11 @@ export class TournamentList {
   protected readonly busyId = signal<string | null>(null);
 
   protected hasBracket(t: Tournament): boolean {
-    return !!t.forgeState?.bracket?.stages?.length;
+    return (
+      !!t.forgeState?.bracket?.stages?.length &&
+      t.status !== 'completed' &&
+      t.status !== 'cancelled'
+    );
   }
 
   protected whenText(t: Tournament): string {

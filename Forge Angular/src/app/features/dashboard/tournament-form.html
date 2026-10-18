@@ -16,24 +16,26 @@
       <tf-field label="Game" for="tf_game">
         <tf-select inputId="tf_game" [options]="gameOptions" formControlName="game" />
       </tf-field>
-      @if (isCustomGame()) {
-        <tf-field label="Game name" for="tf_customGame">
-          <tf-input
-            inputId="tf_customGame"
-            placeholder="e.g. Carrom"
-            required
-            formControlName="customGame"
-          />
+      @if (!isMixed()) {
+        @if (isCustomGame()) {
+          <tf-field label="Game name" for="tf_customGame">
+            <tf-input
+              inputId="tf_customGame"
+              placeholder="e.g. Carrom"
+              required
+              formControlName="customGame"
+            />
+          </tf-field>
+        }
+        @if (modeOptions().length) {
+          <tf-field label="Game mode" for="tf_gameMode">
+            <tf-select inputId="tf_gameMode" [options]="modeOptions()" formControlName="gameMode" />
+          </tf-field>
+        }
+        <tf-field label="Players / format" for="tf_format">
+          <tf-select inputId="tf_format" [options]="formatOptions()" formControlName="format" />
         </tf-field>
       }
-      @if (modeOptions().length) {
-        <tf-field label="Game mode" for="tf_gameMode">
-          <tf-select inputId="tf_gameMode" [options]="modeOptions()" formControlName="gameMode" />
-        </tf-field>
-      }
-      <tf-field label="Players / format" for="tf_format">
-        <tf-select inputId="tf_format" [options]="formatOptions()" formControlName="format" />
-      </tf-field>
       <div>
         <tf-field label="Slots (max players)" for="tf_slots">
           <tf-input
@@ -52,39 +54,46 @@
           <p class="field-note">{{ tableNote() }}</p>
         }
       </div>
-      @for (setting of gameDef().settings; track setting.label) {
-        <tf-field [label]="setting.label" [for]="'tf_setting_' + $index">
-          <tf-select
-            [inputId]="'tf_setting_' + $index"
-            [options]="settingOptions(setting)"
-            [ngModel]="settings()[setting.label] ?? setting.options[0]"
-            [ngModelOptions]="{ standalone: true }"
-            (ngModelChange)="setSetting(setting.label, $event)"
-          />
-        </tf-field>
-      }
-      @if (gameDef().scoring) {
+      @if (isMixed()) {
         <div class="span-2">
-          <tf-field
-            label="Points per game"
-            hint="(Pro points are added, Nab points are deducted)"
-          />
-          <div class="form-grid points" formGroupName="points">
-            @for (field of pointFields; track field.key) {
-              <tf-field [label]="field.label" [for]="'tf_points_' + field.key">
-                <tf-input
-                  [inputId]="'tf_points_' + field.key"
-                  type="number"
-                  [formControlName]="field.key"
-                />
-              </tf-field>
-            }
-          </div>
-          <p class="field-note">
-            On the Forge page, tap Pro on a player who played smart to add the Pro points, or Nab to
-            deduct the Nab points for that game.
-          </p>
+          <tf-field label="Games in this tournament" />
+          <tf-mixed-games-editor [(entries)]="mixedEntries" />
         </div>
+      } @else {
+        @for (setting of gameDef().settings; track setting.label) {
+          <tf-field [label]="setting.label" [for]="'tf_setting_' + $index">
+            <tf-select
+              [inputId]="'tf_setting_' + $index"
+              [options]="settingOptions(setting)"
+              [ngModel]="settings()[setting.label] ?? setting.options[0]"
+              [ngModelOptions]="{ standalone: true }"
+              (ngModelChange)="setSetting(setting.label, $event)"
+            />
+          </tf-field>
+        }
+        @if (gameDef().scoring) {
+          <div class="span-2">
+            <tf-field
+              label="Points per game"
+              hint="(Pro points are added, Nab points are deducted)"
+            />
+            <div class="form-grid points" formGroupName="points">
+              @for (field of pointFields; track field.key) {
+                <tf-field [label]="field.label" [for]="'tf_points_' + field.key">
+                  <tf-input
+                    [inputId]="'tf_points_' + field.key"
+                    type="number"
+                    [formControlName]="field.key"
+                  />
+                </tf-field>
+              }
+            </div>
+            <p class="field-note">
+              On the Forge page, tap Pro on a player who played smart to add the Pro points, or Nab
+              to deduct the Nab points for that game.
+            </p>
+          </div>
+        }
       }
       @if (managerOptions().length || auth.canViewOrganizers()) {
         <div class="span-2">
