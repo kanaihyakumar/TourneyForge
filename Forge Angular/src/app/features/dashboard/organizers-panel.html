@@ -1,0 +1,77 @@
+<tf-card
+  icon="➕"
+  title="Create an Organizer"
+  hint="Give them a username & password so they can log in and run their own tournaments."
+>
+  <form ngNativeValidate [formGroup]="form" (ngSubmit)="create()">
+    <div class="form-grid">
+      <tf-field label="Display name" for="og_display">
+        <tf-input
+          inputId="og_display"
+          placeholder="e.g. Bella"
+          required
+          formControlName="displayName"
+        />
+      </tf-field>
+      <tf-field label="Username" for="og_user">
+        <tf-input inputId="og_user" placeholder="e.g. bella" required formControlName="username" />
+      </tf-field>
+      <tf-field class="span-2" label="Password" for="og_pass">
+        <tf-input
+          inputId="og_pass"
+          placeholder="Set a starting password"
+          required
+          formControlName="password"
+        />
+      </tf-field>
+      @if (auth.isAdmin()) {
+        <div class="span-2">
+          <tf-checkbox formControlName="canManageOrganizers">
+            Allow this organizer to add more organizers (admin only setting)
+          </tf-checkbox>
+        </div>
+      }
+    </div>
+    <div class="btn-row">
+      <button type="submit" tfButton variant="primary">➕ Create Organizer</button>
+    </div>
+  </form>
+</tf-card>
+
+<tf-card icon="🧑‍💼" title="Organizers">
+  @if (error()) {
+    <p class="empty-note">Couldn’t load organizers - check your Firebase setup and connection.</p>
+  } @else if (organizers() === undefined) {
+    <p class="empty-note">Loading…</p>
+  } @else {
+    @for (o of organizers(); track o.id) {
+      <tf-list-row>
+        <ng-container ngProjectAs="[rowTitle]">
+          {{ o.displayName }} <tf-tag>&#64;{{ o.username }}</tf-tag>
+          @if (o.canManageOrganizers) {
+            <tf-tag>🔑 Can add organizers</tf-tag>
+          }
+        </ng-container>
+        <ng-container ngProjectAs="[rowSub]"
+          >Added {{ o.createdAt | date: 'M/d/yyyy' }}</ng-container
+        >
+        @if (auth.isAdmin()) {
+          <ng-container ngProjectAs="[rowActions]">
+            <button type="button" tfButton size="sm" (click)="editing.set(o)">✏️ Edit</button>
+            <button type="button" tfButton size="sm" (click)="resetting.set(o)">
+              🔑 Reset Password
+            </button>
+            <button type="button" tfButton variant="danger" size="sm" (click)="remove(o.id)">
+              🗑️ Delete
+            </button>
+          </ng-container>
+        }
+      </tf-list-row>
+    } @empty {
+      <p class="empty-note">No organizers yet - create one above.</p>
+    }
+  }
+</tf-card>
+
+<tf-organizer-edit-modal [(organizer)]="editing" (saved)="changed.emit()" />
+<tf-password-modal [(organizer)]="resetting" />

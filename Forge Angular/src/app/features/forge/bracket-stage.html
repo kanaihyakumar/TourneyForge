@@ -1,0 +1,100 @@
+@if (hasVisible()) {
+  <div class="head">
+    <h3>{{ heading() }}</h3>
+    @if (!readOnly()) {
+      <div class="actions">
+        <tf-chunk-copy [chunks]="chunks()" label="Copy this match set" tone="accent" />
+        @if (canReshuffle()) {
+          <button type="button" tfButton size="sm" (click)="reshuffle.emit()">🔀 Reshuffle</button>
+        }
+      </div>
+    }
+  </div>
+  <div class="grid">
+    @for (match of stage().matches; track $index; let i = $index) {
+      @if (shown(match)) {
+        <div class="match">
+          <div class="label-row">
+            <div class="label">Match {{ i + 1 }}</div>
+            @if (!readOnly()) {
+              <button
+                type="button"
+                class="copy-one"
+                (click)="copyMatch(i)"
+                [attr.aria-label]="'Copy Match ' + (i + 1)"
+              >
+                📋 Copy
+              </button>
+            }
+          </div>
+          @if (match.players.length < 2) {
+            <div class="bye">
+              🎟️ {{ match.players[0] | platoId }} gets a BYE - advances automatically
+            </div>
+          } @else {
+            @if (isFinalTable(match)) {
+              <p class="need">
+                Pick the winner first, then 2nd, 3rd and 4th if you want them ({{
+                  match.winners.length
+                }}
+                picked)
+              </p>
+            } @else if (match.players.length > 2) {
+              <p class="need">
+                {{
+                  flexible(match)
+                    ? 'Pick who advances - any number, suggested ' +
+                      stage().advance +
+                      ' (' +
+                      match.winners.length +
+                      ' picked)'
+                    : 'Pick the winner'
+                }}
+              </p>
+            }
+            <div class="players">
+              @for (name of match.players; track $index; let p = $index) {
+                <div class="player">
+                  <button
+                    type="button"
+                    class="pick"
+                    [disabled]="readOnly()"
+                    [class.is-winner]="match.winners.includes(p)"
+                    [class.is-loser]="complete(match) && !match.winners.includes(p)"
+                    (click)="pick.emit({ matchIndex: i, playerIndex: p })"
+                  >
+                    <span>{{ name | platoId }}</span>
+                    @if (match.winners.includes(p)) {
+                      <span class="win-badge">{{
+                        isFinalTable(match)
+                          ? placeLabel(match, p)
+                          : flexible(match)
+                            ? '✅ ADVANCES'
+                            : '✅ WINNER'
+                      }}</span>
+                    }
+                  </button>
+                  @if (scoring() && !readOnly()) {
+                    <tf-player-result
+                      [gameRef]="gameRef(i)"
+                      [label]="gameLabel(i)"
+                      [players]="match.players"
+                      [name]="name"
+                    />
+                  }
+                </div>
+              }
+            </div>
+            @if (scoring() && !readOnly() && match.players.length > 2) {
+              <tf-game-recorder
+                [gameRef]="gameRef(i)"
+                [label]="gameLabel(i)"
+                [players]="match.players"
+              />
+            }
+          }
+        </div>
+      }
+    }
+  </div>
+}

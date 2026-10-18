@@ -1,0 +1,66 @@
+<tf-page-header subtitle="Tournaments, groups & bragging rights - all in one arena.">
+  <tf-account-actions hideDashboardLink />
+</tf-page-header>
+
+@if (auth.session()) {
+  @if (quotaLevel() !== 'ok') {
+    <tf-banner tone="warn" icon="⚠️" flush>
+      {{
+        quotaLevel() === 'full'
+          ? 'Firebase free daily quota reached - some requests will fail until it resets.'
+          : 'Firebase free daily quota is nearly used up.'
+      }}
+      See the Usage tab.
+    </tf-banner>
+  }
+  <tf-tabs [tabs]="tabs()" [(active)]="activeTab" />
+
+  <section [hidden]="activeTab() !== 'tournaments'">
+    <tf-tournament-form
+      [editing]="editing()"
+      [organizers]="organizers.value() ?? []"
+      (saved)="onTournamentsChanged()"
+      (cancelEdit)="editing.set(null)"
+    />
+    <tf-tournament-list
+      [tournaments]="tournaments.value()"
+      [organizers]="organizers.value() ?? []"
+      [error]="tournaments.error() !== undefined"
+      (edit)="startEdit($event)"
+      (viewParticipants)="participantsId.set($event)"
+      (clearData)="clearId.set($event)"
+      (viewMatches)="matchesId.set($event)"
+      (viewMessages)="messagesId.set($event)"
+      (changed)="tournaments.reload()"
+    />
+  </section>
+
+  @if (auth.canViewOrganizers()) {
+    <section [hidden]="activeTab() !== 'organizers'">
+      <tf-organizers-panel
+        [organizers]="organizers.value() === undefined ? undefined : assignable()"
+        [error]="organizers.error() !== undefined"
+        (changed)="onOrganizersChanged()"
+      />
+    </section>
+  }
+
+  @if (auth.isAdmin()) {
+    <section [hidden]="activeTab() !== 'usage'">
+      <tf-usage-panel
+        [tournamentList]="tournaments.value() ?? []"
+        (changed)="tournaments.reload()"
+      />
+    </section>
+  }
+
+  <tf-clear-data-modal [(tournamentId)]="clearId" (cleared)="tournaments.reload()" />
+  <tf-participants-modal [(tournamentId)]="participantsId" />
+  <tf-matches-modal [(tournamentId)]="matchesId" />
+  <tf-messages-modal [(tournamentId)]="messagesId" />
+} @else {
+  <tf-card
+    title="🔒 Sign in required"
+    hint="This dashboard is for admins & organizers only. Sign in from the button above."
+  />
+}

@@ -1,0 +1,45 @@
+<div class="top">
+  <tf-status-badge [status]="tournament().status" />
+  @if (canManage()) {
+    <a tfButton size="sm" routerLink="/dashboard" [queryParams]="{ tournament: tournament().id }"
+      >⚙️ Manage</a
+    >
+  }
+</div>
+<h3>{{ tournament().title }}</h3>
+<div class="meta"><tf-tournament-tags [tournament]="tournament()" verbose /></div>
+<tf-tournament-results [tournament]="tournament()" />
+<div #text class="text" [class.expanded]="expanded()">{{ tournament().announcement }}</div>
+@if (overflowing() || expanded()) {
+  <button type="button" class="read-more" (click)="expanded.set(!expanded())">
+    {{ expanded() ? '🔼 Show less' : '🔽 Read more' }}
+  </button>
+}
+<tf-tournament-credits [tournament]="tournament()" />
+<div class="footer">
+  <button type="button" tfButton size="sm" (click)="viewDetails.emit(tournament().id)">
+    📋 View details
+  </button>
+  @if (hasBracket()) {
+    <button type="button" tfButton size="sm" (click)="viewMatches.emit(tournament().id)">
+      🎯 Current matches
+    </button>
+  }
+  @if (!registrationClosed()) {
+    @if (alreadyRegistered()) {
+      <tf-badge tone="live">✅ You’re registered</tf-badge>
+    } @else if (full()) {
+      <tf-badge tone="cancelled">Slots full</tf-badge>
+    } @else {
+      <button
+        type="button"
+        tfButton
+        variant="primary"
+        size="sm"
+        (click)="register.emit(tournament().id)"
+      >
+        ⚔️ Register
+      </button>
+    }
+  }
+</div>

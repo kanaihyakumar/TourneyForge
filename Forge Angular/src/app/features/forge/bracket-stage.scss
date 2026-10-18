@@ -1,0 +1,135 @@
+@use 'mixins' as *;
+
+:host {
+  display: block;
+  margin-bottom: 22px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+h3 {
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.match {
+  padding: 14px 16px;
+  @include neu-surface(6px);
+}
+
+.label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--text-soft);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.players {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pick {
+  @include reset-button;
+  @include neu-well(3px, var(--radius-sm));
+  width: 100%;
+  text-align: left;
+  font-weight: 800;
+  font-size: 0.92rem;
+  padding: 10px 14px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  transition:
+    box-shadow 0.12s ease,
+    color 0.12s ease;
+}
+
+.pick:not(:disabled):hover {
+  @include neu-inset(4px);
+}
+
+.pick.is-winner {
+  color: #fff;
+  background: var(--success);
+  box-shadow: 4px 4px 10px var(--success-glow);
+}
+
+.pick:disabled {
+  cursor: default;
+}
+
+.pick.is-loser {
+  opacity: 0.5;
+}
+
+.win-badge {
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.bye {
+  @include neu-inset(3px);
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--accent-dark);
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+}
+
+.label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.label-row .label {
+  margin-bottom: 0;
+}
+
+.copy-one {
+  @include reset-button;
+  background: none;
+  font-weight: 800;
+  font-size: 0.72rem;
+  color: var(--accent-dark);
+  padding: 2px 4px;
+}
+
+.need {
+  margin: 0 0 8px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: var(--accent-dark);
+}
+
+.player {
+  display: flex;
+  flex-direction: column;
+}

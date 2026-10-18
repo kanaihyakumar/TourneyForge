@@ -1,0 +1,481 @@
+@use 'mixins' as *;
+
+$cycle: 16s;
+
+:host {
+  display: block;
+  max-width: 640px;
+  margin: 8px auto 0;
+}
+
+.stage {
+  @include neu-surface(9px, var(--radius-lg));
+  padding: clamp(14px, 3vw, 24px);
+}
+
+svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  font-family: var(--font-body);
+}
+
+.scene {
+  opacity: 0;
+  animation: scene-fade $cycle infinite;
+}
+
+.s1 {
+  animation-delay: 0s;
+}
+
+.s2 {
+  animation-delay: 4s;
+}
+
+.s3 {
+  animation-delay: 8s;
+}
+
+.s4 {
+  animation-delay: 12s;
+}
+
+@keyframes scene-fade {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  3%,
+  22% {
+    opacity: 1;
+    transform: none;
+  }
+  25%,
+  100% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+.card > rect:first-child,
+.panel,
+.field {
+  fill: var(--bg);
+  stroke: var(--shadow-dark);
+  stroke-opacity: 0.35;
+  stroke-width: 1.5;
+}
+
+.card.side {
+  opacity: 0.55;
+}
+
+.line {
+  fill: var(--text-soft);
+  opacity: 0.55;
+}
+
+.line.soft {
+  opacity: 0.25;
+}
+
+.badge {
+  fill: var(--success);
+}
+
+.tag {
+  fill: var(--shadow-dark);
+  opacity: 0.35;
+}
+
+.svg-title {
+  fill: var(--text);
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.svg-note {
+  fill: var(--text-soft);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.cta {
+  fill: var(--accent);
+}
+
+.cta-text {
+  fill: var(--accent-contrast);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.press {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: press $cycle infinite;
+}
+
+@keyframes press {
+  0%,
+  14% {
+    transform: scale(1);
+  }
+  16% {
+    transform: scale(0.93);
+  }
+  18%,
+  100% {
+    transform: scale(1);
+  }
+}
+
+.cursor path {
+  fill: var(--text);
+  stroke: #fff;
+  stroke-width: 1.5;
+}
+
+.cursor {
+  animation: cursor-move $cycle infinite;
+}
+
+@keyframes cursor-move {
+  0% {
+    transform: translate(470px, 235px);
+  }
+  12%,
+  16% {
+    transform: translate(310px, 192px);
+  }
+  22%,
+  100% {
+    transform: translate(470px, 235px);
+  }
+}
+
+.placeholder {
+  fill: var(--placeholder);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.typed {
+  fill: var(--text);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.type-clip {
+  animation: typing $cycle infinite;
+  transform-box: fill-box;
+  transform-origin: left;
+}
+
+@keyframes typing {
+  0%,
+  27% {
+    transform: scaleX(0);
+  }
+  38%,
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+.check {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation: check-pop $cycle infinite;
+}
+
+.check circle {
+  fill: var(--success);
+}
+
+.check path {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@keyframes check-pop {
+  0%,
+  42% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  47%,
+  48% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  49%,
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+.players rect {
+  fill: var(--bg);
+  stroke: var(--shadow-dark);
+  stroke-opacity: 0.4;
+  stroke-width: 1.5;
+}
+
+.players text,
+.finalist text {
+  fill: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.bracket {
+  fill: none;
+  stroke: var(--text-soft);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw $cycle infinite;
+}
+
+.bracket.win {
+  stroke: var(--success);
+  stroke-width: 4;
+  animation-name: draw-win;
+}
+
+@keyframes draw {
+  0%,
+  51% {
+    stroke-dashoffset: 1;
+  }
+  63%,
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes draw-win {
+  0%,
+  63% {
+    stroke-dashoffset: 1;
+  }
+  68%,
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.finalist {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation: finalist-in $cycle infinite;
+}
+
+.finalist rect {
+  fill: var(--success);
+}
+
+.finalist text {
+  fill: #fff;
+}
+
+@keyframes finalist-in {
+  0%,
+  67% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  70%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.glow circle {
+  fill: var(--warn);
+  opacity: 0.18;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    transform: scale(1.12);
+    opacity: 0.3;
+  }
+}
+
+.trophy {
+  transform-box: fill-box;
+  transform-origin: bottom center;
+  animation: trophy-bounce 1.2s ease-in-out infinite;
+}
+
+.trophy path:first-child,
+.trophy rect {
+  fill: var(--warn);
+}
+
+.trophy .handle {
+  fill: none;
+  stroke: var(--warn);
+  stroke-width: 9;
+  stroke-linecap: round;
+}
+
+.trophy-num {
+  fill: #fff;
+  font-size: 34px;
+  font-weight: 900;
+}
+
+@keyframes trophy-bounce {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  40% {
+    transform: translateY(-12px) scale(1.04);
+  }
+}
+
+.confetti {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: confetti-fall 2.4s linear infinite;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(0) rotate(var(--rot, 0deg));
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(250px) rotate(calc(var(--rot, 0deg) + 360deg));
+    opacity: 0.2;
+  }
+}
+
+.captions {
+  position: relative;
+  min-height: 58px;
+  margin-top: 14px;
+  text-align: center;
+}
+
+.caption {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  opacity: 0;
+  animation: scene-fade $cycle infinite;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text-soft);
+}
+
+.caption strong {
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.c1 {
+  animation-delay: 0s;
+}
+
+.c2 {
+  animation-delay: 4s;
+}
+
+.c3 {
+  animation-delay: 8s;
+}
+
+.c4 {
+  animation-delay: 12s;
+}
+
+.dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  @include neu-inset(2px);
+  animation: dot-on $cycle infinite;
+}
+
+.d2 {
+  animation-delay: 4s;
+}
+
+.d3 {
+  animation-delay: 8s;
+}
+
+.d4 {
+  animation-delay: 12s;
+}
+
+@keyframes dot-on {
+  0%,
+  25%,
+  100% {
+    background: var(--bg);
+  }
+  1%,
+  24% {
+    background: var(--accent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene,
+  .caption,
+  .press,
+  .cursor,
+  .type-clip,
+  .check,
+  .bracket,
+  .finalist,
+  .glow circle,
+  .trophy,
+  .confetti,
+  .dot {
+    animation: none;
+  }
+
+  .s1,
+  .c1 {
+    opacity: 1;
+  }
+
+  .cursor {
+    display: none;
+  }
+}

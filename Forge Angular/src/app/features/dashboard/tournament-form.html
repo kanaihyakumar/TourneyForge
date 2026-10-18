@@ -1,0 +1,251 @@
+<tf-card
+  icon="➕"
+  title="Create a Tournament"
+  hint="Write it up, pick the time, and it'll show on the home page instantly."
+>
+  <form ngNativeValidate [formGroup]="form" (ngSubmit)="submit()">
+    <div class="form-grid">
+      <tf-field class="span-2" label="Tournament title" for="tf_title">
+        <tf-input
+          inputId="tf_title"
+          placeholder="e.g. 🔥 YOUR PLATO GROUP 🔥 ⚔️ CARROM TOUR ⚔️"
+          required
+          formControlName="title"
+        />
+      </tf-field>
+      <tf-field label="Game" for="tf_game">
+        <tf-select inputId="tf_game" [options]="gameOptions" formControlName="game" />
+      </tf-field>
+      @if (isCustomGame()) {
+        <tf-field label="Game name" for="tf_customGame">
+          <tf-input
+            inputId="tf_customGame"
+            placeholder="e.g. Carrom"
+            required
+            formControlName="customGame"
+          />
+        </tf-field>
+      }
+      @if (modeOptions().length) {
+        <tf-field label="Game mode" for="tf_gameMode">
+          <tf-select inputId="tf_gameMode" [options]="modeOptions()" formControlName="gameMode" />
+        </tf-field>
+      }
+      <tf-field label="Players / format" for="tf_format">
+        <tf-select inputId="tf_format" [options]="formatOptions()" formControlName="format" />
+      </tf-field>
+      <div>
+        <tf-field label="Slots (max players)" for="tf_slots">
+          <tf-input
+            inputId="tf_slots"
+            type="number"
+            [min]="1"
+            [max]="500"
+            required
+            formControlName="slots"
+          />
+        </tf-field>
+        @if (capacityNote()) {
+          <p class="field-note">{{ capacityNote() }}</p>
+        }
+        @if (tableNote()) {
+          <p class="field-note">{{ tableNote() }}</p>
+        }
+      </div>
+      @for (setting of gameDef().settings; track setting.label) {
+        <tf-field [label]="setting.label" [for]="'tf_setting_' + $index">
+          <tf-select
+            [inputId]="'tf_setting_' + $index"
+            [options]="settingOptions(setting)"
+            [ngModel]="settings()[setting.label] ?? setting.options[0]"
+            [ngModelOptions]="{ standalone: true }"
+            (ngModelChange)="setSetting(setting.label, $event)"
+          />
+        </tf-field>
+      }
+      @if (gameDef().scoring) {
+        <div class="span-2">
+          <tf-field
+            label="Points per game"
+            hint="(Pro points are added, Nab points are deducted)"
+          />
+          <div class="form-grid points" formGroupName="points">
+            @for (field of pointFields; track field.key) {
+              <tf-field [label]="field.label" [for]="'tf_points_' + field.key">
+                <tf-input
+                  [inputId]="'tf_points_' + field.key"
+                  type="number"
+                  [formControlName]="field.key"
+                />
+              </tf-field>
+            }
+          </div>
+          <p class="field-note">
+            On the Forge page, tap Pro on a player who played smart to add the Pro points, or Nab to
+            deduct the Nab points for that game.
+          </p>
+        </div>
+      }
+      @if (managerOptions().length || auth.canViewOrganizers()) {
+        <div class="span-2">
+          <tf-field label="Organizers who can manage this tournament" hint="(optional)" />
+          <div class="cluster">
+            @for (option of managerOptions(); track option.organizer.id) {
+              <tf-checkbox
+                variant="chip"
+                [ngModel]="managerIds().includes(option.organizer.id)"
+                [disabled]="option.locked"
+                [ngModelOptions]="{ standalone: true }"
+                (ngModelChange)="toggleManager(option.organizer.id, $event)"
+              >
+                {{ option.organizer.displayName }}
+              </tf-checkbox>
+            } @empty {
+              <p class="empty-note">No organizers yet - create one in the Organizers tab.</p>
+            }
+          </div>
+          <p class="field-note">
+            Tick any organizers who should also be able to view & edit this tournament from their
+            own dashboard. You can tick more than one. Organizers added by an admin stay locked.
+          </p>
+        </div>
+      }
+      <tf-field label="Date" for="tf_date">
+        <tf-input inputId="tf_date" type="date" required formControlName="date" />
+      </tf-field>
+      <tf-field label="Time" for="tf_time">
+        <tf-input inputId="tf_time" type="time" required formControlName="time" />
+      </tf-field>
+      <div class="span-2">
+        <tf-field label="Timezone you're entering this time in" for="tf_tz">
+          <tf-select inputId="tf_tz" [options]="timezoneOptions" formControlName="timezone" />
+        </tf-field>
+        <p class="field-note">
+          We'll convert this automatically so every player sees it in their own timezone on the home
+          page.
+        </p>
+      </div>
+      <div class="span-2">
+        <tf-field label="Hosts (who players should tag/contact to register)" for="tf_hostInput" />
+        <tf-add-row
+          placeholder="e.g. Host1"
+          buttonLabel="+ Add Host"
+          [validate]="validateHost"
+          (added)="addHost($event)"
+        />
+        <tf-chip-list
+          class="host-list"
+          [items]="hosts()"
+          removable
+          emptyText="No hosts added yet."
+          (removed)="removeHost($event)"
+        />
+        <p class="field-note">
+          Add one or more hosts - handy when a tournament has co-organizers running registration
+          together.
+        </p>
+      </div>
+      <tf-field
+        class="span-2"
+        label="Announcement (shown on the card - prize pool, time, slots, hype)"
+        for="tf_announcement"
+      >
+        <tf-textarea
+          inputId="tf_announcement"
+          [minHeight]="120"
+          required
+          placeholder="🔥 YOUR TOURNAMENT NAME 🔥&#10;⏰ Time: 10 PM IST  👥 Slots: 32 Players&#10;🏆 PRIZE POOL  🥇 1st: 2K  🥈 2nd: 1K"
+          formControlName="announcement"
+        />
+      </tf-field>
+      <tf-field
+        class="span-2"
+        label="Rules / registration details (shown below, smaller text)"
+        for="tf_details"
+      >
+        <tf-textarea
+          inputId="tf_details"
+          [minHeight]="100"
+          placeholder="📝 Registration opens 30 mins before tour!&#10;🚫 AFK players will be disqualified."
+          formControlName="details"
+        />
+      </tf-field>
+      <tf-field
+        class="span-2"
+        label="Group name"
+        hint="(optional - used in the suggested chat messages)"
+        for="tf_groupName"
+      >
+        <tf-input
+          inputId="tf_groupName"
+          placeholder="e.g. Your Plato Group"
+          formControlName="groupName"
+        />
+      </tf-field>
+      <tf-field class="span-2" label="Sponsor" hint="(optional)" for="tf_sponsor">
+        <tf-input
+          inputId="tf_sponsor"
+          placeholder="e.g. Plato Gaming Co."
+          formControlName="sponsor"
+        />
+      </tf-field>
+      <div class="span-2">
+        <tf-field
+          label="Closing message"
+          hint="(optional - post this once the tournament wraps up)"
+          for="tf_closingMessage"
+        >
+          <tf-textarea
+            inputId="tf_closingMessage"
+            [minHeight]="90"
+            placeholder="🙏 Thank you for joining the tour! We appreciate every participant. Those who didn't win this time - hope you had fun, maybe next time you'll be the champion! 🎉"
+            formControlName="closingMessage"
+          />
+        </tf-field>
+        <div class="btn-row">
+          <button type="button" tfButton size="sm" (click)="useSuggestedMessage()">
+            ✨ Use suggested message
+          </button>
+        </div>
+      </div>
+      <div class="span-2">
+        <tf-field
+          label="Winners"
+          hint='(optional - shows a "Here are the winners" box on the tournament card)'
+        />
+        <div class="form-grid" formArrayName="winners">
+          @for (place of winnerPlaces; track place.place; let i = $index) {
+            <tf-field [label]="place.label" small [for]="'tf_winner' + place.place">
+              <tf-input
+                [inputId]="'tf_winner' + place.place"
+                [placeholder]="place.placeholder"
+                [formControlName]="i"
+              />
+            </tf-field>
+          }
+        </div>
+        @if (editing()) {
+          <div class="btn-row">
+            <button
+              type="button"
+              tfButton
+              size="sm"
+              [disabled]="pulling()"
+              (click)="pullBracketWinners()"
+            >
+              🏆 Pull winners from Match Bracket / points
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+    <div class="btn-row">
+      <button type="submit" tfButton variant="primary" [disabled]="saving()">
+        {{ editing() ? '💾 Save Changes' : '🏆 Publish Tournament' }}
+      </button>
+      @if (editing()) {
+        <button type="button" tfButton (click)="cancelEdit.emit()">Cancel edit</button>
+      }
+    </div>
+  </form>
+</tf-card>

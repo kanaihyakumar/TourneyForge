@@ -1,0 +1,62 @@
+<tf-page-header subtitle="Tournaments, groups & bragging rights - all in one arena.">
+  <tf-timezone-picker />
+  <tf-account-actions />
+</tf-page-header>
+
+<tf-credit-line />
+
+<section>
+  <h2 class="section-title">🔥 Live & Upcoming</h2>
+  @if (tournaments.error()) {
+    <p class="empty-note">
+      Couldn’t load tournaments - check your Firebase setup (see firebase.config.ts) and connection.
+    </p>
+  } @else if (!tournaments.hasValue()) {
+    <p class="empty-note">Loading tournaments…</p>
+  } @else {
+    <div class="tour-grid">
+      @for (t of liveUpcoming(); track t.id) {
+        <tf-tour-card
+          [tournament]="t"
+          (viewDetails)="openDetail($event, false)"
+          (viewMatches)="matchesId.set($event)"
+          (register)="openDetail($event, true)"
+        />
+      }
+    </div>
+    @if (!liveUpcoming().length) {
+      <div class="empty-state">
+        <p class="empty-note">No live or upcoming tournaments right now - check back soon!</p>
+        <tf-how-it-works />
+      </div>
+    }
+  }
+</section>
+
+<section class="completed">
+  <button type="button" tfPill class="toggle" (click)="showCompleted.set(!showCompleted())">
+    {{ toggleLabel() }}
+  </button>
+  @if (showCompleted()) {
+    <div class="tour-grid">
+      @for (t of completed(); track t.id) {
+        <tf-tour-card
+          [tournament]="t"
+          (viewDetails)="openDetail($event, false)"
+          (viewMatches)="matchesId.set($event)"
+          (register)="openDetail($event, true)"
+        />
+      }
+    </div>
+  }
+</section>
+
+<tf-tournament-detail-modal
+  [(tournamentId)]="detailId"
+  [focusRegister]="focusRegister()"
+  (registered)="onRegistered()"
+/>
+
+<tf-matches-modal [(tournamentId)]="matchesId" />
+
+<tf-contact-line />

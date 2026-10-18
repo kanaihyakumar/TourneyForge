@@ -1,0 +1,74 @@
+@mixin neu-raised($distance) {
+  box-shadow:
+    $distance $distance ($distance * 2) var(--shadow-dark),
+    (-$distance) (-$distance) ($distance * 2) var(--shadow-light);
+}
+
+@mixin neu-inset($distance) {
+  box-shadow:
+    inset $distance $distance ($distance * 2) var(--shadow-dark),
+    inset (-$distance) (-$distance) ($distance * 2) var(--shadow-light);
+}
+
+@mixin neu-surface($distance, $radius: var(--radius-md)) {
+  background: var(--bg);
+  border-radius: $radius;
+  @include neu-raised($distance);
+}
+
+@mixin neu-well($distance, $radius: var(--radius-md)) {
+  background: var(--bg);
+  border-radius: $radius;
+  @include neu-inset($distance);
+}
+
+@mixin reset-button {
+  appearance: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+@mixin control-text {
+  font-family: inherit;
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+@mixin form-label {
+  display: block;
+  font-weight: 800;
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+@mixin field-well {
+  display: block;
+  @include neu-well(5px);
+}
+
+@mixin field-control {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  @include control-text;
+  padding: 13px 16px;
+  border-radius: var(--radius-md);
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+
+  &::placeholder {
+    color: var(--placeholder);
+    font-weight: 600;
+  }
+}
+
+@mixin focus-ring {
+  outline: 3px solid var(--accent-dark);
+  outline-offset: 2px;
+}

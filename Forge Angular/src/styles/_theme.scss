@@ -1,0 +1,28 @@
+:root {
+  --bg: #e4e9f2;
+  --shadow-light: #ffffff;
+  --shadow-dark: #a9b4c4;
+  --text: #22283a;
+  --text-soft: #4b5468;
+  --placeholder: #7c879b;
+  --accent: #4f52d6;
+  --accent-dark: #3638a8;
+  --accent-contrast: #ffffff;
+  --accent-shadow-dark: #b9bce8;
+  --accent-inset-dark: #2d2fa0;
+  --accent-inset-light: #6264f0;
+  --accent-glow: rgba(79, 82, 214, 0.4);
+  --danger: #c0392b;
+  --success: #1f8a52;
+  --success-glow: rgba(31, 138, 82, 0.35);
+  --warn: #b8860b;
+  --overlay: rgba(20, 22, 35, 0.45);
+  --modal-shadow-dark: rgba(20, 22, 35, 0.35);
+  --toast-shadow: rgba(0, 0, 0, 0.25);
+  --radius-lg: 22px;
+  --radius-md: 16px;
+  --radius-sm: 10px;
+  --radius-pill: 999px;
+  --font-body: 'Nunito', system-ui, sans-serif;
+  --page-max-width: 1100px;
+}

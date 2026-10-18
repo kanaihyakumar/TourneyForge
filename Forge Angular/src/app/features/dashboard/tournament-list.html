@@ -1,0 +1,64 @@
+<tf-card
+  icon="📋"
+  title="My Tournaments"
+  hint="Manage, view or add participants, or send them straight to the Forge."
+>
+  @if (error()) {
+    <p class="empty-note">Couldn’t load tournaments - check your Firebase setup and connection.</p>
+  } @else if (tournaments() === undefined) {
+    <p class="empty-note">Loading…</p>
+  } @else {
+    @for (t of tournaments(); track t.id) {
+      <tf-list-row>
+        <ng-container ngProjectAs="[rowTitle]">
+          <tf-status-badge [status]="t.status" short /> {{ t.title }}
+        </ng-container>
+        <ng-container ngProjectAs="[rowSub]">
+          {{ t.game }}{{ t.teamSize === 2 ? ' (2v2)' : '' }} · {{ whenText(t) }} ·
+          {{ registeredText(t) }}
+          @if (auth.isAdmin()) {
+            · hosted by {{ t.organizerName || 'admin' }}
+            @if (coManagers(t); as names) {
+              · co-managed by {{ names }}
+            }
+          }
+        </ng-container>
+        <ng-container ngProjectAs="[rowActions]">
+          <button type="button" tfButton size="sm" (click)="viewParticipants.emit(t.id)">
+            👥 Participants
+          </button>
+          @if (hasBracket(t)) {
+            <button type="button" tfButton size="sm" (click)="viewMatches.emit(t.id)">
+              🎯 Current matches
+            </button>
+          }
+          <button type="button" tfButton size="sm" (click)="forge.launch(t.id)">
+            🎲 Open in Forge
+          </button>
+          <button
+            type="button"
+            tfButton
+            size="sm"
+            [disabled]="busyId() === t.id"
+            (click)="toggleCompleted(t)"
+          >
+            {{ t.completed ? '↩️ Reopen Tournament' : '✅ Mark Completed' }}
+          </button>
+          <button type="button" tfButton size="sm" (click)="viewMessages.emit(t.id)">
+            💬 Messages
+          </button>
+          <button type="button" tfButton size="sm" (click)="clearData.emit(t.id)">
+            🧹 Clear data
+          </button>
+          <button type="button" tfButton size="sm" (click)="edit.emit(t.id)">✏️ Edit</button>
+          <button type="button" tfButton variant="danger" size="sm" (click)="remove(t.id)">
+            🗑️ Delete
+          </button>
+        </ng-container>
+      </tf-list-row>
+    }
+    @if (!tournaments()?.length) {
+      <p class="empty-note">You haven't created any tournaments yet - use the form above.</p>
+    }
+  }
+</tf-card>

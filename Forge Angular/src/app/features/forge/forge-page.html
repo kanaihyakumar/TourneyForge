@@ -1,0 +1,188 @@
+<tf-page-header logo="🏆" subtitle="Add participants, then build a knockout Match Bracket.">
+  <a tfButton size="sm" routerLink="/">🏠 Home</a>
+  <a tfButton size="sm" routerLink="/dashboard">🛠️ Dashboard</a>
+</tf-page-header>
+
+<tf-credit-line />
+
+@if (store.imported) {
+  <tf-banner icon="🎯" spread>
+    {{ importText() }}
+    <span bannerAside class="sync" [class.failed]="syncFailed()">{{ store.syncStatus() }}</span>
+    <button bannerAside type="button" tfButton size="sm" (click)="store.exitTournamentMode()">
+      Exit tournament mode
+    </button>
+  </tf-banner>
+}
+
+<tf-card
+  icon="👥"
+  title="Participants"
+  [hint]="
+    store.tournamentMode
+      ? 'Participants come from this tournament. Add a new one, or use 🔁 to replace a player who didn\'t show up.'
+      : 'Add everyone taking part in this tournament.'
+  "
+>
+  @if (!store.tournamentMode) {
+    <tf-add-row
+      placeholder="e.g. Speedy"
+      ariaLabel="Participant name"
+      buttonLabel="+ Add Participant"
+      primary
+      (added)="store.addMember($event)"
+    />
+  }
+  <div class="member-count" aria-live="polite">
+    <span class="dot" aria-hidden="true"></span>{{ memberCountText() }}
+  </div>
+  <tf-chip-list
+    [items]="memberLabels()"
+    [removable]="!store.tournamentMode"
+    [replaceable]="store.canReplace()"
+    emptyText="No participants yet."
+    (removed)="store.removeMember($event)"
+    (replace)="startReplace($event)"
+  />
+  @if (store.tournamentMode || memberLabels().length) {
+    <div class="btn-row">
+      @if (store.tournamentMode && store.canReplace()) {
+        <button type="button" tfButton size="sm" variant="primary" (click)="startAdd()">
+          ➕ Add participant
+        </button>
+      }
+      @if (store.tournamentMode && store.canReplace()) {
+        <button type="button" tfButton size="sm" (click)="messagesId.set(store.tournamentId)">
+          💬 Suggested messages
+        </button>
+      }
+      <tf-chunk-copy [chunks]="memberChunks()" label="Copy participants" tone="accent" />
+    </div>
+  }
+</tf-card>
+
+<tf-card
+  icon="🏆"
+  title="Match Bracket"
+  hint="Turn your participant list into a knockout bracket - pick winners each match, then generate the next match set. Works best with Participants added above."
+>
+  <div class="intro">
+    <div class="settings">
+      @if (store.perMatch() === 2) {
+        <tf-checkbox
+          variant="toggle"
+          [ngModel]="store.thirdPlaceEnabled()"
+          (ngModelChange)="store.thirdPlaceEnabled.set($event)"
+          [disabled]="store.started()"
+        >
+          Also generate a 3rd place match (from the two semifinal losers)
+        </tf-checkbox>
+      }
+      @if (!store.tournamentMode) {
+        <tf-field label="Players per match" for="perMatch">
+          <tf-select
+            inputId="perMatch"
+            [options]="perMatchOptions"
+            [ngModel]="'' + store.perMatch()"
+            (ngModelChange)="store.perMatch.set(+$event)"
+            [disabled]="store.started()"
+          />
+        </tf-field>
+      }
+      @if (store.perMatch() > 2) {
+        <tf-field
+          label="Suggested players advancing from each table (you can still pick any number)"
+          for="advance"
+        >
+          <tf-select
+            inputId="advance"
+            [options]="advanceOptions()"
+            [ngModel]="'' + store.advancePerMatch()"
+            (ngModelChange)="store.advancePerMatch.set(+$event)"
+          />
+        </tf-field>
+      }
+    </div>
+    <div class="btn-row flush">
+      @if (store.started()) {
+        <button type="button" tfButton (click)="store.resetBracket()">🔁 Reset Bracket</button>
+      } @else {
+        <button type="button" tfButton variant="primary" (click)="store.startBracket()">
+          🏆 Start Bracket from Participants
+        </button>
+      }
+    </div>
+  </div>
+
+  @if (!store.started()) {
+    <p class="empty-note">
+      No bracket yet - add participants above, then click "Start Bracket" to generate your first
+      match set.
+    </p>
+  }
+
+  @for (stage of store.stages(); track $index; let i = $index) {
+    <tf-bracket-stage
+      [stage]="stage"
+      [stageIndex]="i"
+      [canReshuffle]="i === store.stages().length - 1 && !store.podium()"
+      (reshuffle)="store.reshuffleLastStage()"
+      (pick)="pick(i, $event)"
+    />
+  }
+
+  @if (!store.podium() && store.lastStage()) {
+    @if (store.nextRound(); as info) {
+      <div class="next-round">
+        <p class="field-note">
+          🎯 {{ info.count }} players advance - next round has {{ info.sizes.length }}
+          {{ info.sizes.length === 1 ? 'table' : 'tables' }} ({{ info.sizes.join(' + ') }} players).
+        </p>
+        @if (store.tableSizeOptions().length > 1) {
+          <tf-field label="Players per game next round" for="nextTable">
+            <tf-select
+              inputId="nextTable"
+              [options]="tableSizeOptions()"
+              [ngModel]="'' + store.perMatch()"
+              (ngModelChange)="store.perMatch.set(+$event)"
+            />
+          </tf-field>
+        }
+        @if (info.fullTotals.length) {
+          <p class="field-note">
+            💡 For full games of {{ store.perMatch() }} players, {{ info.fullTotals.join(' or ') }}
+            players should advance. Change the picks above if you need to.
+          </p>
+        }
+      </div>
+    }
+    @if (store.advanceLabel(); as label) {
+      <div class="btn-row">
+        <button type="button" tfButton variant="primary" (click)="store.advance()">
+          ▶ Generate Next Match Set ({{ label }})
+        </button>
+      </div>
+    } @else if (!store.lastStageComplete()) {
+      <p class="field-note">👆 Pick a winner for every match above to unlock the next match set.</p>
+    }
+  }
+
+  @if (store.winners().length) {
+    <tf-podium
+      variant="results"
+      [title]="store.scoring() ? '🎉 Tournament Results (by points)' : '🎉 Tournament Results'"
+      [winners]="store.winners()"
+    >
+      <button type="button" tfButton size="sm" class="copy-results" (click)="copyResults()">
+        📋 Copy Results
+      </button>
+    </tf-podium>
+  }
+</tf-card>
+
+<tf-scoring-panel />
+
+<tf-contact-line />
+
+<tf-participant-modal [(target)]="replacing" (saved)="store.refresh()" />
+<tf-messages-modal [(tournamentId)]="messagesId" />

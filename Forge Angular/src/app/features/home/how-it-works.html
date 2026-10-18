@@ -1,0 +1,118 @@
+<div
+  class="stage"
+  role="img"
+  aria-label="Animated guide: pick a tournament, enter your Plato ID, check your match, win and celebrate"
+>
+  <svg viewBox="0 0 600 260" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <g class="scene s1">
+      <g class="card side left">
+        <rect x="40" y="50" width="150" height="150" rx="18" />
+        <rect x="58" y="72" width="80" height="10" rx="5" class="line" />
+        <rect x="58" y="94" width="110" height="8" rx="4" class="line soft" />
+      </g>
+      <g class="card side right">
+        <rect x="410" y="50" width="150" height="150" rx="18" />
+        <rect x="428" y="72" width="80" height="10" rx="5" class="line" />
+        <rect x="428" y="94" width="110" height="8" rx="4" class="line soft" />
+      </g>
+      <g class="card main">
+        <rect x="215" y="30" width="170" height="190" rx="20" />
+        <rect x="235" y="52" width="60" height="16" rx="8" class="badge" />
+        <text x="235" y="96" class="svg-title">Carrom Cup</text>
+        <rect x="235" y="108" width="68" height="18" rx="9" class="tag" />
+        <rect x="309" y="108" width="52" height="18" rx="9" class="tag" />
+        <rect x="235" y="138" width="130" height="7" rx="3.5" class="line soft" />
+        <rect x="235" y="152" width="100" height="7" rx="3.5" class="line soft" />
+        <g class="press">
+          <rect x="235" y="176" width="130" height="30" rx="15" class="cta" />
+          <text x="300" y="196" text-anchor="middle" class="cta-text">⚔️ Register</text>
+        </g>
+      </g>
+      <g class="cursor">
+        <path d="M0 0 L0 22 L6 17 L10 26 L14 24 L10 15 L18 15 Z" />
+      </g>
+    </g>
+
+    <g class="scene s2">
+      <rect x="150" y="30" width="300" height="200" rx="22" class="panel" />
+      <text x="170" y="64" class="svg-title">Your Plato ID</text>
+      <rect x="170" y="80" width="260" height="38" rx="14" class="field" />
+      <clipPath id="typeClip">
+        <rect x="170" y="80" class="type-clip" width="260" height="38" />
+      </clipPath>
+      <text x="186" y="105" class="typed" clip-path="url(#typeClip)">@SpeedyFan</text>
+      <rect x="170" y="130" width="260" height="38" rx="14" class="field" />
+      <text x="186" y="155" class="placeholder">Partner’s Plato ID</text>
+      <rect x="170" y="184" width="260" height="34" rx="17" class="cta" />
+      <text x="300" y="206" text-anchor="middle" class="cta-text">Confirm Registration</text>
+      <g class="check">
+        <circle cx="300" cy="125" r="34" />
+        <path d="M284 125 L296 138 L318 112" />
+      </g>
+    </g>
+
+    <g class="scene s3">
+      <g class="players">
+        <rect x="50" y="30" width="110" height="32" rx="16" />
+        <text x="105" y="51" text-anchor="middle">@You</text>
+        <rect x="50" y="80" width="110" height="32" rx="16" />
+        <text x="105" y="101" text-anchor="middle">@Nova</text>
+        <rect x="50" y="150" width="110" height="32" rx="16" />
+        <text x="105" y="171" text-anchor="middle">@Kai</text>
+        <rect x="50" y="200" width="110" height="32" rx="16" />
+        <text x="105" y="221" text-anchor="middle">@Luna</text>
+      </g>
+      <path class="bracket" d="M160 46 H220 V96 M160 96 H220 M220 71 H300 V131" pathLength="1" />
+      <path
+        class="bracket"
+        d="M160 166 H220 V216 M160 216 H220 M220 191 H300 V131"
+        pathLength="1"
+      />
+      <path class="bracket win" d="M300 131 H390" pathLength="1" />
+      <g class="finalist">
+        <rect x="390" y="115" width="120" height="32" rx="16" />
+        <text x="450" y="136" text-anchor="middle">@You</text>
+      </g>
+      <text x="450" y="104" text-anchor="middle" class="svg-note">Final</text>
+    </g>
+
+    <g class="scene s4">
+      <g class="glow"><circle cx="300" cy="125" r="80" /></g>
+      <g class="trophy">
+        <path d="M262 60 H338 V110 Q338 150 300 156 Q262 150 262 110 Z" />
+        <path d="M262 74 H236 Q236 112 266 118" class="handle" />
+        <path d="M338 74 H364 Q364 112 334 118" class="handle" />
+        <rect x="290" y="156" width="20" height="30" />
+        <rect x="266" y="186" width="68" height="14" rx="6" />
+        <text x="300" y="112" text-anchor="middle" class="trophy-num">1</text>
+      </g>
+      @for (piece of confetti; track $index) {
+        <rect
+          class="confetti"
+          [attr.x]="piece.x"
+          y="10"
+          width="9"
+          height="14"
+          rx="2"
+          [style.fill]="piece.color"
+          [style.animation-delay.s]="piece.delay"
+          [style.--rot.deg]="piece.rotate"
+        />
+      }
+    </g>
+  </svg>
+
+  <div class="captions">
+    @for (step of steps; track step.title; let i = $index) {
+      <div class="caption" [class]="'caption c' + (i + 1)">
+        <strong>{{ step.title }}</strong>
+        <span>{{ step.text }}</span>
+      </div>
+    }
+  </div>
+  <div class="dots" aria-hidden="true">
+    @for (step of steps; track step.title; let i = $index) {
+      <span [class]="'dot d' + (i + 1)"></span>
+    }
+  </div>
+</div>

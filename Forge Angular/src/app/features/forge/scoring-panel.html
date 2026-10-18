@@ -1,0 +1,40 @@
+@if (config(); as c) {
+  <tf-card icon="⭐" title="Points system" [hint]="summary()">
+    <p class="field-note">
+      On each table card, tap a player's role and result. Tap <strong>Pro</strong> (smart play, +{{
+        c.proPoints
+      }}) or <strong>Nab</strong> (-{{ c.nabPoints }}) to add or deduct points for that game. Only
+      advancing players score.
+    </p>
+
+    <h3 class="section">Winners from points</h3>
+    <div class="form-grid standings">
+      <tf-field label="Places" for="standPlaces">
+        <tf-select
+          inputId="standPlaces"
+          [options]="placeOptions"
+          [ngModel]="'' + store.winnerPlaces()"
+          (ngModelChange)="store.winnerPlaces.set(+$event)"
+        />
+      </tf-field>
+    </div>
+    @for (row of standings(); track row.name; let i = $index) {
+      <p class="field-note">
+        {{ ['🥇 1st', '🥈 2nd', '🥉 3rd', '4️⃣ 4th'][i] }} - {{ row.name | platoId }} ({{
+          row.points
+        }}
+        pts)
+      </p>
+    } @empty {
+      <p class="empty-note">Record some games to see the standings.</p>
+    }
+    <div class="btn-row">
+      <button type="button" tfButton size="sm" variant="primary" (click)="publishWinners()">
+        🏆 Use as tournament winners
+      </button>
+    </div>
+
+    <h3 class="section">Leaderboard</h3>
+    <tf-leaderboard [rows]="store.leaderboard()" />
+  </tf-card>
+}

@@ -1,0 +1,25 @@
+.completed {
+  margin-top: 32px;
+}
+
+.toggle {
+  margin-bottom: 14px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  padding: 12px 0 8px;
+}
+
+.empty-state .empty-note {
+  padding: 0;
+  font-size: 0.95rem;
+}
+
+.empty-state tf-how-it-works {
+  width: 100%;
+}

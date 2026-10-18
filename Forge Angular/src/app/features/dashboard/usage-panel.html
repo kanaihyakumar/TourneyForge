@@ -1,0 +1,187 @@
+<tf-card
+  icon="📊"
+  title="Database usage"
+  hint="Firebase free (Spark) plan limits. Operation counts only include activity from this app and reset daily at midnight Pacific time."
+>
+  @if (level() === 'full') {
+    <tf-banner tone="warn" icon="🚫" flush>
+      Free daily quota reached - the database will reject requests of that type until the quota
+      resets.
+    </tf-banner>
+  } @else if (level() === 'warn') {
+    <tf-banner tone="warn" icon="⚠️" flush>
+      You've used over {{ warnRatio * 100 }}% of a daily free quota. Consider waiting for the reset
+      or reducing activity.
+    </tf-banner>
+  }
+  @if (usage.error()) {
+    <p class="field-note error">Couldn’t load usage - check your connection.</p>
+  }
+  <tf-meter
+    label="📖 Document reads today"
+    [used]="today().reads"
+    [limit]="quota.reads"
+    [valueText]="today().reads + ' / ' + quota.reads"
+  />
+  <tf-meter
+    label="✏️ Document writes today"
+    [used]="today().writes"
+    [limit]="quota.writes"
+    [valueText]="today().writes + ' / ' + quota.writes"
+  />
+  <tf-meter
+    label="🗑️ Document deletes today"
+    [used]="today().deletes"
+    [limit]="quota.deletes"
+    [valueText]="today().deletes + ' / ' + quota.deletes"
+  />
+  <div class="btn-row">
+    <button type="button" tfButton size="sm" (click)="refresh()">🔄 Refresh</button>
+  </div>
+</tf-card>
+
+<tf-card
+  icon="🗓️"
+  title="Usage by date range"
+  hint="Pick the dates to review. History is available from the day tracking started, up to the last 90 days."
+>
+  <div class="form-grid">
+    <tf-field label="From" for="usageFrom">
+      <tf-input
+        inputId="usageFrom"
+        type="date"
+        [ngModel]="from()"
+        (ngModelChange)="from.set($event)"
+      />
+    </tf-field>
+    <tf-field label="To" for="usageTo">
+      <tf-input inputId="usageTo" type="date" [ngModel]="to()" (ngModelChange)="to.set($event)" />
+    </tf-field>
+  </div>
+  <div class="btn-row">
+    <button type="button" tfButton size="sm" (click)="preset(1)">Today</button>
+    <button type="button" tfButton size="sm" (click)="preset(7)">Last 7 days</button>
+    <button type="button" tfButton size="sm" (click)="preset(30)">Last 30 days</button>
+    <button type="button" tfButton size="sm" (click)="preset(90)">Last 90 days</button>
+  </div>
+  <div class="range-summary">
+    <tf-meter
+      label="📖 Peak reads in a day"
+      [used]="range().peak.reads"
+      [limit]="quota.reads"
+      [valueText]="range().peak.reads + ' / ' + quota.reads"
+      [note]="'Total in range: ' + range().total.reads"
+    />
+    <tf-meter
+      label="✏️ Peak writes in a day"
+      [used]="range().peak.writes"
+      [limit]="quota.writes"
+      [valueText]="range().peak.writes + ' / ' + quota.writes"
+      [note]="'Total in range: ' + range().total.writes"
+    />
+    <tf-meter
+      label="🗑️ Peak deletes in a day"
+      [used]="range().peak.deletes"
+      [limit]="quota.deletes"
+      [valueText]="range().peak.deletes + ' / ' + quota.deletes"
+      [note]="'Total in range: ' + range().total.deletes"
+    />
+  </div>
+  @for (entry of range().days; track entry[0]) {
+    <p class="field-note">
+      {{ entry[0] }} - {{ entry[1].reads }} reads · {{ entry[1].writes }} writes ·
+      {{ entry[1].deletes }} deletes
+    </p>
+  } @empty {
+    <p class="empty-note">No usage recorded for these dates.</p>
+  }
+</tf-card>
+
+<tf-card
+  icon="💾"
+  title="Storage"
+  hint="Estimated size of the stored data against the 1 GiB free storage limit. Reading every document costs one read each."
+>
+  @if (storage(); as s) {
+    <tf-meter
+      label="Total stored data (estimate)"
+      [used]="s.totalBytes"
+      [limit]="quota.storageBytes"
+      [valueText]="format(s.totalBytes) + ' / ' + format(quota.storageBytes)"
+    />
+    @for (c of s.collections; track c.name) {
+      <p class="field-note">{{ c.name }}: {{ c.count }} documents · {{ format(c.bytes) }}</p>
+    }
+  }
+  <div class="btn-row">
+    <button type="button" tfButton size="sm" [disabled]="estimating()" (click)="estimate()">
+      {{ storage() ? '🔄 Recalculate storage' : '🧮 Calculate storage' }}
+    </button>
+  </div>
+</tf-card>
+
+@if (storage(); as s) {
+  <tf-card
+    icon="🧹"
+    title="Free up space"
+    hint="Clear data from individual tournaments, largest first."
+  >
+    @for (t of s.tournaments; track t.id) {
+      <tf-list-row>
+        <ng-container ngProjectAs="[rowTitle]">{{ t.title }}</ng-container>
+        <ng-container ngProjectAs="[rowSub]">
+          {{ format(t.bytes) }} · {{ t.registrations }} registrations ·
+          {{ t.hasBracket ? 'bracket saved' : 'no bracket' }}
+        </ng-container>
+        <ng-container ngProjectAs="[rowActions]">
+          <button type="button" tfButton variant="danger" size="sm" (click)="clearingId.set(t.id)">
+            🧹 Clear data
+          </button>
+        </ng-container>
+      </tf-list-row>
+    } @empty {
+      <p class="empty-note">No tournaments stored.</p>
+    }
+  </tf-card>
+}
+
+<tf-card
+  icon="🧽"
+  title="Clear multiple tournaments"
+  hint="Pick the tournaments and the data to clear from each of them."
+>
+  <div class="btn-row flush quick-select">
+    <button type="button" tfButton size="sm" (click)="selectAll()">Select all</button>
+    <button type="button" tfButton size="sm" (click)="selectFinished()">Select finished</button>
+    <button type="button" tfButton size="sm" (click)="selected.set([])">Clear selection</button>
+  </div>
+  <div class="stack pick-list">
+    @for (t of tournamentList(); track t.id) {
+      <tf-checkbox
+        variant="chip"
+        [ngModel]="isSelected(t.id)"
+        [ngModelOptions]="{ standalone: true }"
+        (ngModelChange)="toggle(t.id, $event)"
+      >
+        <tf-status-badge [status]="t.status" short /> {{ t.title }} ·
+        {{ t.registeredCount }} participants · {{ sizeOf(t) }}
+      </tf-checkbox>
+    } @empty {
+      <p class="empty-note">No tournaments found.</p>
+    }
+  </div>
+  <form class="stack" [formGroup]="bulk" (ngSubmit)="clearSelected()">
+    <tf-checkbox formControlName="registrations">Participants</tf-checkbox>
+    <tf-checkbox formControlName="forgeState">Bracket & match data</tf-checkbox>
+    <tf-checkbox formControlName="winners">Winners</tf-checkbox>
+    <tf-checkbox formControlName="closingMessage">Closing message</tf-checkbox>
+    <tf-checkbox formControlName="details">Rules / registration details</tf-checkbox>
+    <div class="btn-row flush">
+      <button type="submit" tfButton variant="danger" [disabled]="bulkBusy() || !selected().length">
+        🧽 Clear selected tournaments ({{ selected().length }})
+      </button>
+    </div>
+  </form>
+</tf-card>
+
+<tf-clear-data-modal [(tournamentId)]="clearingId" (cleared)="onCleared()" />
