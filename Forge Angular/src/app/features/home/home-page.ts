@@ -15,9 +15,11 @@ import { CreditLine } from '../../layout/credit-line';
 import { TimezonePicker } from '../../layout/timezone-picker';
 import { ContactLine } from '../../layout/contact-line';
 import { PageHeader } from '../../layout/page-header';
+import { Button } from '../../shared/ui/button';
 import { PillButton } from '../../shared/ui/pill-button';
 import { MatchesModal } from '../../shared/tournament/matches-modal';
 import { HowItWorks } from './how-it-works';
+import { HowToModal } from './how-to-modal';
 import { TourCard } from './tour-card';
 import { WinnersMarquee } from './winners-marquee';
 import { TournamentDetailModal } from './tournament-detail-modal';
@@ -34,6 +36,8 @@ import { TournamentDetailModal } from './tournament-detail-modal';
     TourCard,
     WinnersMarquee,
     HowItWorks,
+    HowToModal,
+    Button,
     MatchesModal,
     TournamentDetailModal,
   ],
@@ -49,6 +53,7 @@ export class HomePage {
   protected readonly detailId = signal<string | null>(null);
   protected readonly focusRegister = signal(false);
   protected readonly matchesId = signal<string | null>(null);
+  protected readonly howToOpen = signal(false);
   protected readonly showCompleted = signal(true);
 
   protected readonly liveUpcoming = computed(() =>

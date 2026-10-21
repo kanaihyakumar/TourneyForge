@@ -8,7 +8,10 @@
 <tf-winners-marquee [tournaments]="completed()" />
 
 <section>
-  <h2 class="section-title">🔥 Live & Upcoming</h2>
+  <div class="section-head">
+    <h2 class="section-title">🔥 Live & Upcoming</h2>
+    <button type="button" tfButton size="sm" (click)="howToOpen.set(true)">❓ How to use</button>
+  </div>
   @if (tournaments.error()) {
     <p class="empty-note">
       Couldn’t load tournaments - check your Firebase setup (see firebase.config.ts) and connection.
@@ -60,5 +63,7 @@
 />
 
 <tf-matches-modal [(tournamentId)]="matchesId" />
+
+<tf-how-to-modal [(open)]="howToOpen" />
 
 <tf-contact-line />

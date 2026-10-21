@@ -326,4 +326,36 @@ describe('HomePage', () => {
     expect(root.querySelector('tf-modal')?.textContent).toContain('Registration is closed');
     expect(root.querySelector('tf-register-form')).toBeNull();
   });
+
+  it('opens a how-to slideshow with the registration steps and demo names', async () => {
+    const fixture = TestBed.createComponent(HomePage);
+    const root = fixture.nativeElement as HTMLElement;
+    await fixture.whenStable();
+    await fixture.whenStable();
+    expect(root.querySelector('tf-slideshow')).toBeNull();
+
+    const open = Array.from(root.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('How to use'),
+    ) as HTMLElement;
+    open.click();
+    await fixture.whenStable();
+    const modal = root.querySelector('tf-how-to-modal') as HTMLElement;
+    expect(modal.textContent).toContain('Create a tournament');
+    expect(modal.textContent).toContain('Demo Cup');
+
+    (modal.querySelector('[aria-label="Go to slide 2"]') as HTMLElement).click();
+    await fixture.whenStable();
+    const text = modal.textContent ?? '';
+    expect(text).toContain('Registration soon');
+    expect(text).toContain('Register');
+    expect(text).toContain('Slots full');
+
+    (modal.querySelector('[aria-label="Go to slide 3"]') as HTMLElement).click();
+    await fixture.whenStable();
+    expect(modal.textContent).toContain('Aiden');
+
+    (modal.querySelector('[aria-label="Close"]') as HTMLElement).click();
+    await fixture.whenStable();
+    expect(root.querySelector('tf-slideshow')).toBeNull();
+  });
 });
