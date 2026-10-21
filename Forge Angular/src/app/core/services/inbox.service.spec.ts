@@ -41,6 +41,9 @@ describe('InboxService', () => {
             setDoc: async (ref: { id: string }, data: Record<string, unknown>) => {
               db.docs.set(ref.id, data);
             },
+            deleteDoc: async (ref: { id: string }) => {
+              db.docs.delete(ref.id);
+            },
             updateDoc: async (ref: { id: string }, data: Record<string, unknown>) => {
               db.docs.set(ref.id, { ...db.docs.get(ref.id), ...data });
             },
@@ -120,5 +123,37 @@ describe('InboxService', () => {
     const messages = inbox.myThread()?.messages ?? [];
     expect(messages.length).toBe(MAX_INBOX_MESSAGES);
     expect(messages.at(-1)?.text).toBe(`msg ${MAX_INBOX_MESSAGES + 4}`);
+  });
+
+  it('lets only the admin delete a single message or a whole conversation', async () => {
+    session.set(bella);
+    await inbox.send('first');
+    await inbox.send('second');
+    const [first] = inbox.myThread()?.messages ?? [];
+    expect(await inbox.deleteMessage('o1', first.id)).toBe(false);
+    expect(await inbox.deleteThread('o1')).toBe(false);
+    expect(db.docs.has('o1')).toBe(true);
+
+    session.set(admin);
+    await inbox.loadThreads();
+    expect(await inbox.deleteMessage('o1', first.id)).toBe(true);
+    expect(inbox.threads()?.[0].messages.map((m) => m.text)).toEqual(['second']);
+    expect((db.docs.get('o1') as { messages: unknown[] }).messages.length).toBe(1);
+
+    const [last] = inbox.threads()?.[0].messages ?? [];
+    expect(await inbox.deleteMessage('o1', last.id)).toBe(true);
+    expect(db.docs.has('o1')).toBe(false);
+    expect(inbox.threads()).toEqual([]);
+    expect(inbox.unread()).toBe(0);
+  });
+
+  it('deletes a conversation outright', async () => {
+    session.set(bella);
+    await inbox.send('hello');
+    session.set(admin);
+    await inbox.loadThreads();
+    expect(await inbox.deleteThread('o1')).toBe(true);
+    expect(db.docs.size).toBe(0);
+    expect(inbox.threads()).toEqual([]);
   });
 });

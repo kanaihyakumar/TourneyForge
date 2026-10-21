@@ -262,6 +262,7 @@ export interface InboxThread {
 
 export interface ChatLine {
   id: number;
+  ref?: string;
   mine: boolean;
   text: string;
   at: number;

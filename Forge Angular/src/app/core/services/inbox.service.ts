@@ -117,6 +117,35 @@ export class InboxService {
     }
   }
 
+  async deleteThread(organizerId: string): Promise<boolean> {
+    if (this.auth.session()?.role !== 'admin') return false;
+    await this.firestore.deleteDoc(this.ref(organizerId));
+    this.dropThread(organizerId);
+    return true;
+  }
+
+  async deleteMessage(organizerId: string, messageId: string): Promise<boolean> {
+    if (this.auth.session()?.role !== 'admin') return false;
+    const snap = await this.firestore.getDoc(this.ref(organizerId));
+    if (!snap.exists()) {
+      this.dropThread(organizerId);
+      return true;
+    }
+    const existing = snap.data() as InboxThread;
+    const messages = existing.messages.filter((m) => m.id !== messageId);
+    if (!messages.length) return this.deleteThread(organizerId);
+    const thread: InboxThread = { ...existing, messages };
+    await this.firestore.updateDoc(this.ref(organizerId), { messages });
+    this.replaceThread(thread);
+    return true;
+  }
+
+  private dropThread(organizerId: string): void {
+    const threads = (this.threads() ?? []).filter((t) => t.organizerId !== organizerId);
+    this.threads.set(threads);
+    this.unread.set(threads.filter((t) => t.adminUnread).length);
+  }
+
   private replaceThread(thread: InboxThread): void {
     const rest = (this.threads() ?? []).filter((t) => t.organizerId !== thread.organizerId);
     const threads = [thread, ...rest].sort((a, b) => b.updatedAt - a.updatedAt);

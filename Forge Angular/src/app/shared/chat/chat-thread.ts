@@ -1,4 +1,5 @@
 import {
+  booleanAttribute,
   ChangeDetectionStrategy,
   Component,
   effect,
@@ -22,7 +23,19 @@ import { Button } from '../ui/button';
       @for (line of lines(); track line.id) {
         <div class="line" [class.mine]="line.mine">
           <div class="bubble">{{ line.text }}</div>
-          <span class="time">{{ line.at | date: 'MMM d, h:mm a' }}</span>
+          <span class="time">
+            {{ line.at | date: 'MMM d, h:mm a' }}
+            @if (deletable() && line.ref) {
+              <button
+                type="button"
+                class="del"
+                aria-label="Delete message"
+                (click)="removed.emit(line.ref)"
+              >
+                🗑️
+              </button>
+            }
+          </span>
         </div>
       } @empty {
         <p class="empty">{{ emptyText() }}</p>
@@ -101,6 +114,18 @@ import { Button } from '../ui/button';
       color: var(--text-soft);
     }
 
+    .del {
+      @include reset-button;
+      font-size: 0.72rem;
+      padding: 0 4px;
+      opacity: 0.7;
+    }
+
+    .del:hover,
+    .del:focus-visible {
+      opacity: 1;
+    }
+
     .empty {
       margin: auto;
       text-align: center;
@@ -131,7 +156,9 @@ export class ChatThread {
   readonly placeholder = input('Type a message…');
   readonly emptyText = input('No messages yet.');
   readonly disabled = input(false);
+  readonly deletable = input(false, { transform: booleanAttribute });
   readonly sent = output<string>();
+  readonly removed = output<string>();
 
   protected readonly maxLength = MAX_CHAT_TEXT;
   protected readonly draft = signal('');

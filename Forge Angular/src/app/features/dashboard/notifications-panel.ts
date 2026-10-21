@@ -50,6 +50,7 @@ export class NotificationsPanel {
   protected readonly lines = computed<ChatLine[]>(() =>
     (this.thread()?.messages ?? []).map((m, i) => ({
       id: i,
+      ref: m.id,
       mine: m.from === 'admin',
       text: m.text,
       at: m.at,
@@ -91,6 +92,32 @@ export class NotificationsPanel {
       if (!ok) this.toast.show('Could not send the reply.');
     } catch (err) {
       this.toast.show('Could not send the reply - check your connection.');
+      console.error(err);
+    }
+  }
+
+  protected async deleteMessage(messageId: string): Promise<void> {
+    const id = this.openId();
+    if (!id || !confirm('Delete this message? This cannot be undone.')) return;
+    await this.run(() => this.inbox.deleteMessage(id, messageId), 'Message deleted.');
+    if (!this.thread()) this.openId.set(null);
+  }
+
+  protected async deleteConversation(): Promise<void> {
+    const id = this.openId();
+    const name = this.thread()?.organizerName || 'this organizer';
+    if (!id || !confirm(`Delete the whole conversation with ${name}? This cannot be undone.`)) {
+      return;
+    }
+    await this.run(() => this.inbox.deleteThread(id), 'Conversation deleted.');
+    this.openId.set(null);
+  }
+
+  private async run(action: () => Promise<boolean>, done: string): Promise<void> {
+    try {
+      this.toast.show((await action()) ? done : 'Could not delete.');
+    } catch (err) {
+      this.toast.show('Could not delete - check your connection.');
       console.error(err);
     }
   }

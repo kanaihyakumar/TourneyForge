@@ -108,9 +108,16 @@
     <h3 class="with">Conversation with {{ t.organizerName || 'Organizer' }}</h3>
     <tf-chat-thread
       [lines]="lines()"
+      deletable
+      (removed)="deleteMessage($event)"
       placeholder="Write a reply"
       emptyText="No messages yet."
       (sent)="reply($event)"
     />
+    <div class="btn-row">
+      <button type="button" tfButton variant="danger" size="sm" (click)="deleteConversation()">
+        🗑️ Delete conversation
+      </button>
+    </div>
   }
 </tf-card>

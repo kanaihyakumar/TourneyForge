@@ -49,6 +49,8 @@ describe('DashboardPage', () => {
   const loadMine = vi.fn();
   const markRead = vi.fn();
   const reply = vi.fn();
+  const deleteMessage = vi.fn();
+  const deleteThread = vi.fn();
   const sendMessage = vi.fn();
   const threads = signal<InboxThread[] | undefined>(undefined);
   const myThread = signal<InboxThread | null | undefined>(undefined);
@@ -62,6 +64,8 @@ describe('DashboardPage', () => {
     loadMine.mockReset().mockResolvedValue(undefined);
     markRead.mockReset().mockResolvedValue(undefined);
     reply.mockReset().mockResolvedValue(true);
+    deleteMessage.mockReset().mockResolvedValue(true);
+    deleteThread.mockReset().mockResolvedValue(true);
     sendMessage.mockReset().mockResolvedValue(true);
     threads.set([]);
     myThread.set(null);
@@ -86,6 +90,8 @@ describe('DashboardPage', () => {
             loadMine,
             markRead,
             reply,
+            deleteMessage,
+            deleteThread,
             send: sendMessage,
           },
         },
@@ -538,6 +544,18 @@ describe('DashboardPage', () => {
     button(panel, 'Send')?.click();
     await settle(fixture);
     expect(reply).toHaveBeenCalledWith('o2', 'Done, it is unlocked');
+
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    (panel.querySelector('button[aria-label="Delete message"]') as HTMLElement).click();
+    await settle(fixture);
+    expect(deleteMessage).toHaveBeenCalledWith('o2', 'm1');
+
+    button(panel, 'Delete conversation')?.click();
+    await settle(fixture);
+    expect(confirmSpy.mock.calls.at(-1)?.[0]).toContain('Bella');
+    expect(deleteThread).toHaveBeenCalledWith('o2');
+    expect(panel.querySelector('tf-chat-thread')).toBeNull();
+    confirmSpy.mockRestore();
   });
 
   it('lets an organizer message the admin from the Messages tab', async () => {
