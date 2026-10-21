@@ -1,6 +1,12 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { collection, doc, query, where } from 'firebase/firestore';
-import { DEFAULT_TIMEZONE, LOCK_EXEMPT_FIELDS, STORAGE_KEYS } from '../config/constants';
+import {
+  ADMIN_OWNER_ID,
+  ADMIN_OWNER_NAME,
+  DEFAULT_TIMEZONE,
+  LOCK_EXEMPT_FIELDS,
+  STORAGE_KEYS,
+} from '../config/constants';
 import { formatWithZone } from '../utils/time';
 import {
   BulkAddResult,
@@ -221,6 +227,27 @@ export class TournamentService {
     if (session?.role !== 'admin' && data.locked !== false) return false;
     await this.firestore.deleteDoc(ref);
     return true;
+  }
+
+  async assign(
+    id: string,
+    owner: { id: string; displayName: string } | null,
+    session: Session | null,
+  ): Promise<Tournament | null> {
+    if (session?.role !== 'admin') return null;
+    const ref = this.ref(id);
+    const snap = await this.firestore.getDoc(ref);
+    if (!snap.exists()) return null;
+    const existing = snap.data() as TournamentData;
+    const ownerId = owner?.id ?? ADMIN_OWNER_ID;
+    const updates: Partial<TournamentData> = {
+      organizerId: ownerId,
+      organizerName: owner?.displayName ?? ADMIN_OWNER_NAME,
+      managerIds: (existing.managerIds ?? []).filter((managerId) => managerId !== ownerId),
+      updatedAt: Date.now(),
+    };
+    await this.firestore.updateDoc(ref, updates);
+    return withMeta(id, { ...existing, ...updates });
   }
 
   async patchByOrganizer(organizerId: string, patch: Partial<TournamentData>): Promise<void> {

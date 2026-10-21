@@ -36,6 +36,7 @@ export class TournamentList {
   readonly viewMatches = output<string>();
   readonly viewMessages = output<string>();
   readonly clearData = output<string>();
+  readonly assign = output<Tournament>();
   readonly changed = output<void>();
 
   protected readonly busyId = signal<string | null>(null);

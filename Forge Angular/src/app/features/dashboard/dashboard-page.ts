@@ -23,6 +23,7 @@ import { Card } from '../../shared/ui/card';
 import { TabItem, Tabs } from '../../shared/ui/tabs';
 import { visibleOrganizers } from '../../core/utils/tournament';
 import { UsageService } from '../../core/services/usage.service';
+import { AssignModal } from './assign-modal';
 import { ClearDataModal } from './clear-data-modal';
 import { NotificationsPanel } from './notifications-panel';
 import { SupportMessages } from './support-messages';
@@ -51,6 +52,7 @@ const REFRESH_GAP_MS = 15000;
     MatchesModal,
     MessagesModal,
     ClearDataModal,
+    AssignModal,
     UsagePanel,
     NotificationsPanel,
     SupportMessages,
@@ -91,6 +93,7 @@ export class DashboardPage {
   protected readonly matchesId = signal<string | null>(null);
   protected readonly messagesId = signal<string | null>(null);
   protected readonly clearId = signal<string | null>(null);
+  protected readonly assigning = signal<Tournament | null>(null);
   private readonly usage = inject(UsageService);
   protected readonly quotaLevel = computed(() => {
     this.usage.days();

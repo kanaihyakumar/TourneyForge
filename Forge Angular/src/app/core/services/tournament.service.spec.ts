@@ -325,4 +325,19 @@ describe('TournamentService.replaceParticipant', () => {
     store.data['registrationSoon'] = false;
     expect((await service.register('t1', 'Hal', 'Ida')).ok).toBe(true);
   });
+
+  it('lets only an admin assign a tournament to an organizer and take it back', async () => {
+    store.data['managerIds'] = ['o9', 'o1'];
+    const bella = { id: 'o1', displayName: 'Bella' };
+    expect(await service.assign('t1', bella, organizer)).toBeNull();
+    expect(store.updates.length).toBe(0);
+
+    const assigned = await service.assign('t1', bella, admin);
+    expect(assigned).toMatchObject({ organizerId: 'o1', organizerName: 'Bella' });
+    expect(assigned?.managerIds).toEqual(['o9']);
+    expect(store.updates.at(-1)).toMatchObject({ organizerId: 'o1', organizerName: 'Bella' });
+
+    const removed = await service.assign('t1', null, admin);
+    expect(removed).toMatchObject({ organizerId: 'admin', organizerName: 'Admin' });
+  });
 });

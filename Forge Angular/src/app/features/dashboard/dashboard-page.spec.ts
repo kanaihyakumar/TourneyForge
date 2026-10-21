@@ -45,6 +45,7 @@ describe('DashboardPage', () => {
   const quota = vi.fn();
   const getForgeState = vi.fn();
   const removeMany = vi.fn();
+  const assign = vi.fn();
   const loadThreads = vi.fn();
   const loadMine = vi.fn();
   const markRead = vi.fn();
@@ -60,6 +61,7 @@ describe('DashboardPage', () => {
   beforeEach(() => {
     current = tournament();
     removeMany.mockReset().mockResolvedValue(1);
+    assign.mockReset().mockResolvedValue(tournament());
     loadThreads.mockReset().mockResolvedValue(undefined);
     loadMine.mockReset().mockResolvedValue(undefined);
     markRead.mockReset().mockResolvedValue(undefined);
@@ -126,6 +128,7 @@ describe('DashboardPage', () => {
             quota,
             getForgeState,
             removeMany,
+            assign,
           },
         },
         {
@@ -160,7 +163,7 @@ describe('DashboardPage', () => {
 
     expect(root.textContent).toContain('Carrom Cup');
     expect(root.textContent).toContain('co-managed by Bella');
-    expect(root.textContent).toContain('hosted by Admin');
+    expect(root.textContent).toContain('assigned to Admin');
     expect(root.querySelectorAll('tf-tabs button').length).toBe(4);
     expect(root.textContent).toContain('@bella');
   });
@@ -670,5 +673,53 @@ describe('DashboardPage', () => {
     const done = TestBed.createComponent(DashboardPage);
     await settle(done);
     expect((done.nativeElement as HTMLElement).querySelector('tf-segmented')).toBeNull();
+  });
+
+  it('lets an admin assign a tournament to an organizer and remove the assignment', async () => {
+    current = tournament({ organizerId: 'admin', organizerName: 'Admin', managerIds: [] });
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+
+    button(root, 'Assign')?.click();
+    await settle(fixture);
+    const modal = root.querySelector('tf-assign-modal') as HTMLElement;
+    expect(modal.textContent).toContain('Currently assigned to');
+    expect(modal.textContent).toContain('Admin');
+    expect(button(modal, 'Remove assignment')).toBeUndefined();
+    const select = modal.querySelector('#assignOwner') as HTMLSelectElement;
+    expect(Array.from(select.options).map((o) => o.text.trim())).toEqual(['Bella (@bella)']);
+
+    button(modal, 'Assign')?.click();
+    await settle(fixture);
+    expect(assign).toHaveBeenLastCalledWith(
+      't1',
+      { id: 'o2', displayName: 'Bella' },
+      expect.anything(),
+    );
+    expect(root.querySelector('tf-assign-modal [role="dialog"]')).toBeNull();
+
+    current = tournament({ organizerId: 'o2', organizerName: 'Bella', managerIds: [] });
+    fixture.destroy();
+    const again = TestBed.createComponent(DashboardPage);
+    const root2 = again.nativeElement as HTMLElement;
+    await settle(again);
+    expect(root2.querySelector('tf-tournament-list')?.textContent).toContain('assigned to Bella');
+    button(root2, 'Assign')?.click();
+    await settle(again);
+    const modal2 = root2.querySelector('tf-assign-modal') as HTMLElement;
+    expect(modal2.textContent).toContain('Bella');
+    button(modal2, 'Remove assignment')?.click();
+    await settle(again);
+    expect(assign).toHaveBeenLastCalledWith('t1', null, expect.anything());
+  });
+
+  it('does not show the Assign action to organizers', async () => {
+    current = tournament({ organizerId: 'o2', organizerName: 'Bella' });
+    asOrganizer();
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+    expect(button(root, 'Assign')).toBeUndefined();
   });
 });

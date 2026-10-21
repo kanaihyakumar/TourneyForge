@@ -25,7 +25,7 @@
             · {{ reg }}
           }
           @if (auth.isAdmin()) {
-            · hosted by {{ t.organizerName || 'admin' }}
+            · assigned to {{ t.organizerName || 'admin' }}
             @if (coManagers(t); as names) {
               · co-managed by {{ names }}
             }
@@ -65,6 +65,7 @@
             💬 Messages
           </button>
           @if (auth.isAdmin()) {
+            <button type="button" tfButton size="sm" (click)="assign.emit(t)">👤 Assign</button>
             <button type="button" tfButton size="sm" (click)="clearData.emit(t.id)">
               🧹 Clear data
             </button>

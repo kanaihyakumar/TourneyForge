@@ -29,6 +29,7 @@
       (edit)="startEdit($event)"
       (viewParticipants)="participantsId.set($event)"
       (clearData)="clearId.set($event)"
+      (assign)="assigning.set($event)"
       (viewMatches)="matchesId.set($event)"
       (viewMessages)="messagesId.set($event)"
       (changed)="tournaments.reload()"
@@ -65,6 +66,11 @@
   }
 
   <tf-clear-data-modal [(tournamentId)]="clearId" (cleared)="tournaments.reload()" />
+  <tf-assign-modal
+    [(tournament)]="assigning"
+    [organizers]="organizers.value() ?? []"
+    (assigned)="tournaments.reload()"
+  />
   <tf-participants-modal [(tournamentId)]="participantsId" />
   <tf-matches-modal [(tournamentId)]="matchesId" />
   <tf-messages-modal [(tournamentId)]="messagesId" />

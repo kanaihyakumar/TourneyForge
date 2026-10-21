@@ -87,6 +87,9 @@ export const USAGE_FLUSH_MS = 30000;
 export const USAGE_HISTORY_DAYS = 90;
 export const USAGE_TIMEZONE = 'America/Los_Angeles';
 
+export const ADMIN_OWNER_ID = 'admin';
+export const ADMIN_OWNER_NAME = 'Admin';
+
 export const CONTACT_PLATO_ID = 'Speedy40';
 export const CONTACT_DISCORD_ID = 'speedy_speedy';
 export const DISCORD_ICON = '👾';
