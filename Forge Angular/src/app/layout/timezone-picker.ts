@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { TIMEZONE_OPTIONS } from '../core/config/constants';
 import { TimezoneService } from '../core/services/timezone.service';
 import { Select } from '../shared/forms/select';
 
@@ -13,7 +12,7 @@ import { Select } from '../shared/forms/select';
     <tf-select
       inputId="tzSelect"
       compact
-      [options]="options"
+      [options]="timezone.options()"
       [ngModel]="timezone.selected()"
       (ngModelChange)="timezone.select($event)"
     />
@@ -40,5 +39,4 @@ import { Select } from '../shared/forms/select';
 })
 export class TimezonePicker {
   protected readonly timezone = inject(TimezoneService);
-  protected readonly options = TIMEZONE_OPTIONS;
 }

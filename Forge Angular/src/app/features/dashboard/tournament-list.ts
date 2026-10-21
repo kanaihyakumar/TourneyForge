@@ -3,6 +3,7 @@ import { DEFAULT_TIMEZONE, LOCKED_NOTICE } from '../../core/config/constants';
 import { Organizer, Tournament } from '../../core/models/models';
 import { AuthService } from '../../core/services/auth.service';
 import { ForgeImportService } from '../../core/services/forge-import.service';
+import { TimezoneService } from '../../core/services/timezone.service';
 import { ToastService } from '../../core/services/toast.service';
 import { TournamentService } from '../../core/services/tournament.service';
 import { formatWithZone } from '../../core/utils/time';
@@ -23,6 +24,7 @@ export class TournamentList {
   private readonly toast = inject(ToastService);
   protected readonly auth = inject(AuthService);
   protected readonly forge = inject(ForgeImportService);
+  private readonly timezone = inject(TimezoneService);
 
   readonly tournaments = input<Tournament[] | undefined>(undefined);
   readonly organizers = input<Organizer[]>([]);
@@ -79,6 +81,14 @@ export class TournamentList {
   protected registeredText(t: Tournament): string {
     const capacity = t.teamCapacity ? '/' + t.teamCapacity : '';
     return `${t.registeredCount}${capacity}${t.teamSize === 2 ? ' teams' : ' participants'}`;
+  }
+
+  protected registrationText(t: Tournament): string {
+    if (t.status === 'completed' || t.status === 'cancelled' || !t.registrationOpensAt) return '';
+    const opens = formatWithZone(t.registrationOpensAt, t.createdTZ || DEFAULT_TIMEZONE);
+    return t.registrationOpensAt > this.timezone.now()
+      ? `🔔 registration opens ${opens}`
+      : `🟢 registration opened ${opens}`;
   }
 
   protected coManagers(t: Tournament): string {

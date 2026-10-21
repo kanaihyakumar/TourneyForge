@@ -70,6 +70,30 @@ export function formatInTimezone(utcMillis: number, timeZone: string): string {
   }
 }
 
+export function formatOffset(utcMillis: number, timeZone: string): string {
+  const minutes = Math.round(offsetAt(utcMillis, timeZone) / 60000);
+  const sign = minutes < 0 ? '-' : '+';
+  const abs = Math.abs(minutes);
+  const mins = abs % 60;
+  return `UTC${sign}${Math.floor(abs / 60)}${mins ? ':' + String(mins).padStart(2, '0') : ''}`;
+}
+
+export function clockTime(utcMillis: number, timeZone: string): string {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).format(new Date(utcMillis));
+}
+
+export function timezoneOptionsAt(utcMillis: number): { value: string; label: string }[] {
+  return TIMEZONES.map((tz) => ({
+    value: tz.id,
+    label: `${tz.label} (${formatOffset(utcMillis, tz.id)}) · now ${clockTime(utcMillis, tz.id)}`,
+  }));
+}
+
 export function timezoneLabel(id: string): string {
   const tz = TIMEZONES.find((t) => t.id === id);
   return tz ? tz.label.split(' - ')[0] : id;

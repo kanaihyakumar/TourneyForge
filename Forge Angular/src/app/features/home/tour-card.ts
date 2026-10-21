@@ -13,8 +13,9 @@ import {
 import { RouterLink } from '@angular/router';
 import { Tournament } from '../../core/models/models';
 import { AuthService } from '../../core/services/auth.service';
+import { TimezoneService } from '../../core/services/timezone.service';
 import { TournamentService } from '../../core/services/tournament.service';
-import { canManage, isFull } from '../../core/utils/tournament';
+import { canManage, isFull, registrationNotOpenYet, timeUntil } from '../../core/utils/tournament';
 import { TournamentCredits } from '../../shared/tournament/tournament-credits';
 import { TournamentResults } from '../../shared/tournament/tournament-results';
 import { TournamentTags } from '../../shared/tournament/tournament-tags';
@@ -40,6 +41,7 @@ import { StatusBadge } from '../../shared/ui/status-badge';
 export class TourCard {
   private readonly auth = inject(AuthService);
   private readonly tournaments = inject(TournamentService);
+  private readonly timezone = inject(TimezoneService);
 
   readonly tournament = input.required<Tournament>();
   readonly viewDetails = output<string>();
@@ -62,6 +64,17 @@ export class TourCard {
   );
   protected readonly registrationClosed = computed(() =>
     ['completed', 'cancelled'].includes(this.tournament().status),
+  );
+
+  protected readonly comingSoon = computed(
+    () =>
+      !this.registrationClosed() && registrationNotOpenYet(this.tournament(), this.timezone.now()),
+  );
+  protected readonly opensIn = computed(() =>
+    timeUntil(this.tournament().registrationOpensAt, this.timezone.now()),
+  );
+  protected readonly opensAt = computed(() =>
+    this.timezone.format(this.tournament().registrationOpensAt),
   );
 
   constructor() {

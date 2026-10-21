@@ -20,6 +20,7 @@ export const TIMEZONES: { id: string; label: string }[] = [
   { id: 'Europe/London', label: 'GMT/BST - UK' },
   { id: 'Europe/Berlin', label: 'CET - Central Europe' },
   { id: 'Asia/Dubai', label: 'GST - Dubai' },
+  { id: 'Asia/Kuwait', label: 'AST - Kuwait' },
   { id: 'Asia/Singapore', label: 'SGT - Singapore' },
   { id: 'Asia/Tokyo', label: 'JST - Japan' },
   { id: 'Australia/Sydney', label: 'AEST - Sydney' },
@@ -30,6 +31,8 @@ export const TIMEZONE_OPTIONS: SelectOption[] = TIMEZONES.map((tz) => ({
   value: tz.id,
   label: tz.label,
 }));
+
+export const CLOCK_TICK_MS = 15000;
 
 export const STATUS_RANK: Record<TournamentStatus, number> = {
   ongoing: 0,

@@ -144,6 +144,7 @@ export interface TournamentInput {
   hosts: string[];
   startUTC: number;
   createdTZ: string;
+  registrationOpensAt?: number;
   managerIds?: string[];
 }
 
@@ -174,6 +175,7 @@ export interface TournamentData {
   hosts?: string[];
   startUTC: number;
   createdTZ: string;
+  registrationOpensAt?: number;
   organizerId: string;
   organizerName: string;
   managerIds?: string[];
@@ -198,6 +200,7 @@ export interface Tournament extends TournamentData {
   completed: boolean;
   cancelled: boolean;
   locked: boolean;
+  registrationOpensAt: number;
   teamSize: TeamSize;
   gameMode: string;
   format: string;

@@ -1,6 +1,7 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { collection, doc, query, where } from 'firebase/firestore';
-import { LOCK_EXEMPT_FIELDS, STORAGE_KEYS } from '../config/constants';
+import { DEFAULT_TIMEZONE, LOCK_EXEMPT_FIELDS, STORAGE_KEYS } from '../config/constants';
+import { formatWithZone } from '../utils/time';
 import {
   BulkAddResult,
   ClearOptions,
@@ -45,6 +46,7 @@ const UPDATABLE_FIELDS = [
   'closingMessage',
   'startUTC',
   'createdTZ',
+  'registrationOpensAt',
   'cancelled',
   'completed',
   'locked',
@@ -141,6 +143,7 @@ export class TournamentService {
       ...(input.scoring ? { scoring: input.scoring } : {}),
       startUTC: input.startUTC,
       createdTZ: input.createdTZ,
+      registrationOpensAt: Math.max(0, Number(input.registrationOpensAt) || 0),
       organizerId: session.id,
       organizerName: session.displayName,
       managerIds: await this.grantableManagers(session, cleanList(input.managerIds)),
@@ -254,6 +257,15 @@ export class TournamentService {
     const data = snap.data() as TournamentData;
     if (staff && !canManage(staff, data)) {
       return { ok: false, message: 'You do not have permission to edit this tournament.' };
+    }
+    if (!staff && Number(data.registrationOpensAt) > Date.now()) {
+      return {
+        ok: false,
+        message: `Registration hasn't opened yet. It opens ${formatWithZone(
+          Number(data.registrationOpensAt),
+          data.createdTZ || DEFAULT_TIMEZONE,
+        )}.`,
+      };
     }
     const who = staff ? 'the' : 'your';
     const registrations = data.registrations || [];

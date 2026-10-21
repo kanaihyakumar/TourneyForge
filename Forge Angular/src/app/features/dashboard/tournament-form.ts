@@ -16,7 +16,6 @@ import {
   DEFAULT_CLOSING_MESSAGE,
   DEFAULT_TIMEZONE,
   LOCKED_NOTICE,
-  TIMEZONE_OPTIONS,
   WINNER_PLACES,
 } from '../../core/config/constants';
 import {
@@ -48,11 +47,17 @@ import {
   Winner,
 } from '../../core/models/models';
 import { AuthService } from '../../core/services/auth.service';
+import { TimezoneService } from '../../core/services/timezone.service';
 import { ToastService } from '../../core/services/toast.service';
 import { TournamentLimitError, TournamentService } from '../../core/services/tournament.service';
 import { deserializeStages, podiumFromSavedBracket } from '../../core/utils/bracket';
 import { formatPlatoId } from '../../core/utils/plato';
-import { localPartsToUtc, utcToLocalParts } from '../../core/utils/time';
+import {
+  formatInTimezone,
+  localPartsToUtc,
+  timezoneLabel,
+  utcToLocalParts,
+} from '../../core/utils/time';
 import {
   registrationLabel,
   usesFreeRounds,
@@ -132,7 +137,8 @@ export class TournamentForm {
   readonly cancelEdit = output<void>();
 
   protected readonly gameOptions = GAME_OPTIONS;
-  protected readonly timezoneOptions = TIMEZONE_OPTIONS;
+  protected readonly timezoneService = inject(TimezoneService);
+  protected readonly timezoneOptions = this.timezoneService.options;
   protected readonly winnerPlaces = WINNER_PLACES;
 
   protected readonly form = this.fb.group({
@@ -146,6 +152,8 @@ export class TournamentForm {
     date: '',
     time: '',
     timezone: DEFAULT_TIMEZONE,
+    regDate: '',
+    regTime: '',
     announcement: '',
     details: '',
     sponsor: '',
@@ -218,6 +226,39 @@ export class TournamentForm {
       return '';
     return `💡 ${per} players play each match. ${total} slots isn't a multiple of ${per} - ${suggestedSlots(this.selectedFormat())} is suggested.`;
   });
+
+  protected readonly timeCheck = computed(() => {
+    const { date, time, timezone } = this.values();
+    if (!date || !time || !timezone) return null;
+    const utc = localPartsToUtc(date, time, timezone);
+    if (!utc) return null;
+    const display = this.timezoneService.selected();
+    return {
+      entered: `${formatInTimezone(utc, timezone)} (${timezoneLabel(timezone)})`,
+      shown: `${formatInTimezone(utc, display)} (${timezoneLabel(display)})`,
+      utc: formatInTimezone(utc, 'UTC'),
+      sameZone: display === timezone,
+    };
+  });
+
+  protected readonly regCheck = computed(() => {
+    const { regDate, regTime, date, time, timezone } = this.values();
+    if (!regDate && !regTime) return { kind: 'none' as const };
+    if (!regDate || !regTime) return { kind: 'incomplete' as const };
+    const opens = localPartsToUtc(regDate, regTime, timezone ?? DEFAULT_TIMEZONE);
+    const start = date && time ? localPartsToUtc(date, time, timezone ?? DEFAULT_TIMEZONE) : 0;
+    const display = this.timezoneService.selected();
+    return {
+      kind: start && opens >= start ? ('late' as const) : ('ok' as const),
+      opens: `${formatInTimezone(opens, timezone ?? DEFAULT_TIMEZONE)} (${timezoneLabel(timezone ?? DEFAULT_TIMEZONE)})`,
+      shown: `${formatInTimezone(opens, display)} (${timezoneLabel(display)})`,
+      sameZone: display === timezone,
+    };
+  });
+
+  protected clearRegistrationOpen(): void {
+    this.form.patchValue({ regDate: '', regTime: '' });
+  }
 
   protected readonly capacityNote = computed(() => {
     const { slots } = this.values();
@@ -381,6 +422,8 @@ export class TournamentForm {
       this.toast.show('Add at least 2 games for a mixed tournament.');
       return;
     }
+    const registrationOpensAt = this.registrationOpensAt(value);
+    if (registrationOpensAt === null) return;
     const first = mixed[0];
     const input: TournamentInput = {
       title: value.title,
@@ -408,6 +451,7 @@ export class TournamentForm {
       hosts: [...this.hosts()],
       startUTC: localPartsToUtc(value.date, value.time, value.timezone),
       createdTZ: value.timezone,
+      registrationOpensAt,
       ...(this.auth.canViewOrganizers() ? { managerIds: [...this.managerIds()] } : {}),
     };
 
@@ -427,6 +471,20 @@ export class TournamentForm {
 
   protected cancelPublish(): void {
     this.pending = null;
+  }
+
+  private registrationOpensAt(value: ReturnType<typeof this.form.getRawValue>): number | null {
+    if (!value.regDate && !value.regTime) return 0;
+    if (!value.regDate || !value.regTime) {
+      this.toast.show('Pick both a date and a time for when registration opens, or clear them.');
+      return null;
+    }
+    const opens = localPartsToUtc(value.regDate, value.regTime, value.timezone);
+    if (opens >= localPartsToUtc(value.date, value.time, value.timezone)) {
+      this.toast.show('Registration must open before the tournament starts.');
+      return null;
+    }
+    return opens;
   }
 
   private async persist(input: TournamentInput | TournamentUpdate): Promise<void> {
@@ -499,6 +557,7 @@ export class TournamentForm {
     const mixedTournament = t.mixed.length > 1;
     const known = mixedTournament ? null : findGame(t.game);
     const scoring = t.scoring;
+    const opensAt = t.registrationOpensAt;
     this.populating = true;
     this.form.setValue({
       title: t.title,
@@ -511,6 +570,8 @@ export class TournamentForm {
       date: local.date,
       time: local.time,
       timezone: zone,
+      regDate: opensAt ? utcToLocalParts(opensAt, zone).date : '',
+      regTime: opensAt ? utcToLocalParts(opensAt, zone).time : '',
       announcement: t.announcement,
       details: t.details,
       sponsor: t.sponsor || '',

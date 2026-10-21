@@ -147,12 +147,66 @@
         </tf-field>
         <div class="span-2">
           <tf-field label="Timezone you're entering this time in" for="tf_tz">
-            <tf-select inputId="tf_tz" [options]="timezoneOptions" formControlName="timezone" />
+            <tf-select inputId="tf_tz" [options]="timezoneOptions()" formControlName="timezone" />
           </tf-field>
+          @if (timeCheck(); as check) {
+            <p class="field-note time-check">
+              🕒 You're setting <strong>{{ check.entered }}</strong>
+              @if (!check.sameZone) {
+                = <strong>{{ check.shown }}</strong> in your viewing timezone
+              }
+              · {{ check.utc }} UTC.
+            </p>
+          }
           <p class="field-note">
             We'll convert this automatically so every player sees it in their own timezone on the
             home page.
           </p>
+        </div>
+        <tf-field
+          label="Registration opens - date"
+          hint="(optional - leave blank to open right away)"
+          for="tf_regDate"
+        >
+          <tf-input inputId="tf_regDate" type="date" formControlName="regDate" />
+        </tf-field>
+        <tf-field label="Registration opens - time" for="tf_regTime">
+          <tf-input inputId="tf_regTime" type="time" formControlName="regTime" />
+        </tf-field>
+        <div class="span-2">
+          @switch (regCheck().kind) {
+            @case ('ok') {
+              @if (regCheck(); as check) {
+                <p class="field-note time-check">
+                  🔔 Players see "Registration coming soon" until
+                  <strong>{{ check.opens }}</strong>
+                  @if (!check.sameZone) {
+                    = <strong>{{ check.shown }}</strong> in your viewing timezone
+                  }
+                  .
+                </p>
+              }
+            }
+            @case ('late') {
+              <p class="field-note error">Registration has to open before the tournament starts.</p>
+            }
+            @case ('incomplete') {
+              <p class="field-note error">Pick both a date and a time, or clear them.</p>
+            }
+            @default {
+              <p class="field-note">
+                Registration opens as soon as you publish. Set a date and time to show "Registration
+                coming soon" first. Uses the timezone above.
+              </p>
+            }
+          }
+          @if (regCheck().kind !== 'none') {
+            <div class="btn-row">
+              <button type="button" tfButton size="sm" (click)="clearRegistrationOpen()">
+                ↩️ Open registration immediately
+              </button>
+            </div>
+          }
         </div>
         <div class="span-2">
           <tf-field label="Hosts (who players should tag/contact to register)" for="tf_hostInput" />

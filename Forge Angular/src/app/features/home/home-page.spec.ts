@@ -244,4 +244,57 @@ describe('HomePage', () => {
     expect(withButton.length).toBe(1);
     expect(withButton[0].textContent).toContain('Cup live');
   });
+
+  it('shows coming soon instead of Register until registration opens', async () => {
+    const opensAt = Date.now() + 2 * 3600_000 + 60_000;
+    TestBed.overrideProvider(TournamentService, {
+      useValue: {
+        list: vi.fn().mockResolvedValue([make('later', { registrationOpensAt: opensAt })]),
+        get: vi.fn().mockResolvedValue(make('later', { registrationOpensAt: opensAt })),
+        myRegistrations: signal<string[]>([]),
+      },
+    });
+    const fixture = TestBed.createComponent(HomePage);
+    const root = fixture.nativeElement as HTMLElement;
+    await fixture.whenStable();
+    await fixture.whenStable();
+
+    const card = root.querySelector('tf-tour-card') as HTMLElement;
+    expect(card.textContent).toContain('Registration coming soon');
+    expect(card.textContent).toContain('opens in 2h');
+    expect(card.textContent).toContain('Registration opens');
+    expect(
+      Array.from(card.querySelectorAll('button')).some((b) => b.textContent?.includes('Register')),
+    ).toBe(false);
+
+    const view = Array.from(card.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('View details'),
+    ) as HTMLElement;
+    view.click();
+    await fixture.whenStable();
+    await fixture.whenStable();
+    expect(root.querySelector('tf-modal')?.textContent).toContain('Registration coming soon');
+    expect(root.querySelector('tf-register-form')).toBeNull();
+  });
+
+  it('shows the Register button once registration has opened', async () => {
+    TestBed.overrideProvider(TournamentService, {
+      useValue: {
+        list: vi
+          .fn()
+          .mockResolvedValue([make('open', { registrationOpensAt: Date.now() - 60_000 })]),
+        myRegistrations: signal<string[]>([]),
+      },
+    });
+    const fixture = TestBed.createComponent(HomePage);
+    const root = fixture.nativeElement as HTMLElement;
+    await fixture.whenStable();
+    await fixture.whenStable();
+
+    const card = root.querySelector('tf-tour-card') as HTMLElement;
+    expect(card.textContent).not.toContain('coming soon');
+    expect(
+      Array.from(card.querySelectorAll('button')).some((b) => b.textContent?.includes('Register')),
+    ).toBe(true);
+  });
 });

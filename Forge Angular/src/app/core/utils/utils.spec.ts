@@ -27,8 +27,11 @@ import {
   capacityFor,
   computeStatus,
   findDuplicateRegistration,
+  isOpenForRegistration,
   parsePrizes,
   podiumRows,
+  registrationNotOpenYet,
+  timeUntil,
   usesFreeRounds,
   withPrizes,
   visibleOrganizers,
@@ -51,7 +54,14 @@ import {
 } from './messages';
 import { estimateBytes, estimateDocBytes, formatBytes } from './size';
 import { quotaLevel } from '../services/usage.service';
-import { formatInTimezone, localPartsToUtc, utcToLocalParts, zonedTimeToUtc } from './time';
+import {
+  formatInTimezone,
+  formatOffset,
+  localPartsToUtc,
+  timezoneOptionsAt,
+  utcToLocalParts,
+  zonedTimeToUtc,
+} from './time';
 
 describe('plato utils', () => {
   it('formats ids with a single leading @', () => {
@@ -735,5 +745,52 @@ describe('free-for-all rounds', () => {
       { place: 1, name: 'A', prize: '20 Pips' },
       { place: 2, name: 'B', prize: 'Gold' },
     ]);
+  });
+
+  it('lists Kuwait and shows each zone with its offset and current time', () => {
+    const noon = Date.UTC(2026, 9, 21, 12, 0);
+    const options = timezoneOptionsAt(noon);
+    const label = (id: string) => options.find((o) => o.value === id)?.label;
+    expect(label('Asia/Kuwait')).toBe('AST - Kuwait (UTC+3) · now 3:00 PM');
+    expect(label('Asia/Kolkata')).toBe('IST - India (UTC+5:30) · now 5:30 PM');
+    expect(label('America/New_York')).toBe('ET - US Eastern (UTC-4) · now 8:00 AM');
+    expect(label('UTC')).toBe('UTC (UTC+0) · now 12:00 PM');
+    expect(formatOffset(noon, 'Asia/Kuwait')).toBe('UTC+3');
+  });
+
+  it('knows when registration has not opened yet', () => {
+    const now = Date.UTC(2026, 9, 21, 12, 0);
+    const base = {
+      title: 'T',
+      game: 'Carrom',
+      slots: 8,
+      announcement: '',
+      details: '',
+      prizeText: '',
+      sponsor: '',
+      startUTC: now + 5 * 3600_000,
+      createdTZ: 'UTC',
+      organizerId: 'o',
+      organizerName: 'O',
+      createdAt: 0,
+      updatedAt: 0,
+    };
+    const open = withMeta('a', base);
+    expect(open.registrationOpensAt).toBe(0);
+    expect(registrationNotOpenYet(open, now)).toBe(false);
+    expect(isOpenForRegistration(open, now)).toBe(true);
+
+    const later = withMeta('b', { ...base, registrationOpensAt: now + 3600_000 });
+    expect(registrationNotOpenYet(later, now)).toBe(true);
+    expect(isOpenForRegistration(later, now)).toBe(false);
+    expect(isOpenForRegistration(later, now + 3600_000)).toBe(true);
+  });
+
+  it('describes how long until registration opens', () => {
+    const now = 0;
+    expect(timeUntil(30 * 1000, now)).toBe('1 min');
+    expect(timeUntil(45 * 60000, now)).toBe('45 min');
+    expect(timeUntil(135 * 60000, now)).toBe('2h 15m');
+    expect(timeUntil(72 * 3600_000, now)).toBe('3 days');
   });
 });

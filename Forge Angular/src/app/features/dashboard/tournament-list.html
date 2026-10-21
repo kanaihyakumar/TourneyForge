@@ -21,6 +21,9 @@
         <ng-container ngProjectAs="[rowSub]">
           {{ t.game }}{{ t.teamSize === 2 ? ' (2v2)' : '' }} · {{ whenText(t) }} ·
           {{ registeredText(t) }}
+          @if (registrationText(t); as reg) {
+            · {{ reg }}
+          }
           @if (auth.isAdmin()) {
             · hosted by {{ t.organizerName || 'admin' }}
             @if (coManagers(t); as names) {

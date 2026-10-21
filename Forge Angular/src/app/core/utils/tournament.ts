@@ -48,6 +48,7 @@ export function withMeta(id: string, data: TournamentData): Tournament {
     completed: !!data.completed,
     cancelled: !!data.cancelled,
     locked: data.locked !== false,
+    registrationOpensAt: Number(data.registrationOpensAt) || 0,
     teamSize,
     gameMode: data.gameMode ?? '',
     format: data.format ?? (teamSize === 2 ? '2v2' : '1v1'),
@@ -120,8 +121,23 @@ export function canManage(
   return (tournament.managerIds || []).includes(session.id);
 }
 
-export function isOpenForRegistration(t: Tournament): boolean {
-  return t.status === 'upcoming' || t.status === 'ongoing';
+export function registrationNotOpenYet(
+  t: Pick<Tournament, 'registrationOpensAt'>,
+  now = Date.now(),
+): boolean {
+  return t.registrationOpensAt > now;
+}
+
+export function isOpenForRegistration(t: Tournament, now = Date.now()): boolean {
+  return (t.status === 'upcoming' || t.status === 'ongoing') && !registrationNotOpenYet(t, now);
+}
+
+export function timeUntil(targetUTC: number, now = Date.now()): string {
+  const minutes = Math.max(1, Math.ceil((targetUTC - now) / 60000));
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 48) return `${hours}h ${minutes % 60}m`;
+  return `${Math.floor(hours / 24)} days`;
 }
 
 export function isFull(t: Tournament): boolean {

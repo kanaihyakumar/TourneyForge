@@ -270,4 +270,27 @@ describe('TournamentService.replaceParticipant', () => {
     expect(await service.removeMany(['t1', 't2'], admin)).toBe(2);
     expect(store.updates.filter((patch) => patch['deleted']).length).toBe(2);
   });
+
+  it('refuses public registration until it opens, but lets staff add participants', async () => {
+    store.data = { ...store.data, registrationOpensAt: Date.now() + 3600_000 };
+    const early = await service.register('t1', 'Fay', 'Gus');
+    expect(early.ok).toBe(false);
+    expect(early.message).toContain("hasn't opened yet");
+    expect(store.updates.length).toBe(0);
+
+    expect((await service.addParticipant('t1', 'Fay', 'Gus', admin)).ok).toBe(true);
+
+    store.updates.length = 0;
+    store.data = { ...store.data, registrationOpensAt: Date.now() - 1000 };
+    expect((await service.register('t1', 'Hal', 'Ida')).ok).toBe(true);
+  });
+
+  it('lets an unlocked tournament change when registration opens and clear it again', async () => {
+    store.data['locked'] = false;
+    const opens = Date.now() + 7200_000;
+    const updated = await service.update('t1', { registrationOpensAt: opens }, organizer);
+    expect(updated?.registrationOpensAt).toBe(opens);
+    const cleared = await service.update('t1', { registrationOpensAt: 0 }, organizer);
+    expect(cleared?.registrationOpensAt).toBe(0);
+  });
 });

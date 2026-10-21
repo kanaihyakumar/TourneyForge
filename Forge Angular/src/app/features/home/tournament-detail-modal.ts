@@ -8,8 +8,14 @@ import {
   output,
   resource,
 } from '@angular/core';
+import { TimezoneService } from '../../core/services/timezone.service';
 import { TournamentService } from '../../core/services/tournament.service';
-import { isFull, isOpenForRegistration } from '../../core/utils/tournament';
+import {
+  isFull,
+  isOpenForRegistration,
+  registrationNotOpenYet,
+  timeUntil,
+} from '../../core/utils/tournament';
 import { TournamentCredits } from '../../shared/tournament/tournament-credits';
 import { TournamentResults } from '../../shared/tournament/tournament-results';
 import { TournamentTags } from '../../shared/tournament/tournament-tags';
@@ -53,6 +59,12 @@ import { RegisterForm } from './register-form';
         @if (alreadyRegistered()) {
           <tf-banner icon="✅">You’re already registered for this tournament. Good luck!</tf-banner>
         }
+        @if (comingSoon()) {
+          <tf-banner icon="🔔">
+            Registration coming soon - it opens {{ timezone.format(t.registrationOpensAt) }} (in
+            {{ opensIn() }}). Come back then to join!
+          </tf-banner>
+        }
         @if (canRegister()) {
           <tf-register-form
             [tournament]="t"
@@ -76,6 +88,7 @@ import { RegisterForm } from './register-form';
 })
 export class TournamentDetailModal {
   private readonly tournaments = inject(TournamentService);
+  protected readonly timezone = inject(TimezoneService);
 
   readonly tournamentId = model<string | null>(null);
   readonly focusRegister = input(false);
@@ -93,7 +106,19 @@ export class TournamentDetailModal {
   });
   protected readonly isOpen = computed(() => {
     const t = this.tournament.value();
-    return !!t && isOpenForRegistration(t);
+    return !!t && isOpenForRegistration(t, this.timezone.now());
+  });
+  protected readonly comingSoon = computed(() => {
+    const t = this.tournament.value();
+    return (
+      !!t &&
+      (t.status === 'upcoming' || t.status === 'ongoing') &&
+      registrationNotOpenYet(t, this.timezone.now())
+    );
+  });
+  protected readonly opensIn = computed(() => {
+    const t = this.tournament.value();
+    return t ? timeUntil(t.registrationOpensAt, this.timezone.now()) : '';
   });
   protected readonly full = computed(() => {
     const t = this.tournament.value();

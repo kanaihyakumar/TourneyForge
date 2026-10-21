@@ -202,4 +202,81 @@ describe('TournamentForm game options', () => {
       (root.querySelector('button[aria-label="Remove game"]') as HTMLButtonElement).disabled;
     expect(remove()).toBe(true);
   });
+
+  it('confirms the entered time in the chosen timezone, the viewing timezone and UTC', async () => {
+    const fixture = TestBed.createComponent(TournamentForm);
+    const root = fixture.nativeElement as HTMLElement;
+    await fixture.whenStable();
+    const set = (id: string, value: string) => {
+      const el = root.querySelector('#' + id) as HTMLInputElement;
+      el.value = value;
+      el.dispatchEvent(new Event('input'));
+    };
+    expect(root.querySelector('.time-check')).toBeNull();
+    expect(options(root, 'tf_tz')).toContain('Asia/Kuwait');
+
+    set('tf_date', '2026-10-21');
+    set('tf_time', '22:00');
+    await choose(root, 'tf_tz', 'Asia/Kuwait', fixture);
+    const note = root.querySelector('.time-check')?.textContent?.replace(/\s+/g, ' ') ?? '';
+    expect(note).toContain('Wed, Oct 21, 10:00 PM (AST)');
+    expect(note).toContain('Thu, Oct 22, 12:30 AM (IST)');
+    expect(note).toContain('Wed, Oct 21, 7:00 PM UTC');
+    expect(
+      Array.from((root.querySelector('#tf_tz') as HTMLSelectElement).options).find(
+        (o) => o.value === 'Asia/Kuwait',
+      )?.text,
+    ).toMatch(/AST - Kuwait \(UTC\+3\) · now \d{1,2}:\d{2} [AP]M/);
+  });
+
+  it('saves when registration opens and rejects an incomplete or late opening', async () => {
+    const fixture = TestBed.createComponent(TournamentForm);
+    const root = fixture.nativeElement as HTMLElement;
+    await fixture.whenStable();
+    const set = (id: string, value: string) => {
+      const el = root.querySelector('#' + id) as HTMLInputElement;
+      el.value = value;
+      el.dispatchEvent(new Event('input'));
+    };
+    const submit = async () => {
+      (root.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+      await fixture.whenStable();
+    };
+    set('tf_title', 'Cup');
+    set('tf_announcement', 'Hype');
+    set('tf_date', '2026-01-15');
+    set('tf_time', '10:00');
+    await submit();
+    expect(create.mock.calls.at(-1)?.[0].registrationOpensAt).toBe(0);
+
+    create.mockClear();
+    set('tf_title', 'Cup');
+    set('tf_announcement', 'Hype');
+    set('tf_date', '2026-01-15');
+    set('tf_time', '10:00');
+    set('tf_regDate', '2026-01-14');
+    await fixture.whenStable();
+    expect(root.textContent).toContain('Pick both a date and a time');
+    await submit();
+    expect(create).not.toHaveBeenCalled();
+
+    set('tf_regTime', '09:00');
+    await fixture.whenStable();
+    expect(root.textContent).toContain('Registration coming soon');
+    expect(root.textContent).toContain('Wed, Jan 14, 9:00 AM (IST)');
+    await submit();
+    expect(create.mock.calls.at(-1)?.[0].registrationOpensAt).toBe(Date.UTC(2026, 0, 14, 3, 30));
+
+    create.mockClear();
+    set('tf_title', 'Cup');
+    set('tf_announcement', 'Hype');
+    set('tf_date', '2026-01-15');
+    set('tf_time', '10:00');
+    set('tf_regDate', '2026-01-16');
+    set('tf_regTime', '09:00');
+    await fixture.whenStable();
+    expect(root.textContent).toContain('has to open before the tournament starts');
+    await submit();
+    expect(create).not.toHaveBeenCalled();
+  });
 });
