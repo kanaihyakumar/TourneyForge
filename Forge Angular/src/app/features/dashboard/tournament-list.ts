@@ -7,6 +7,7 @@ import { TimezoneService } from '../../core/services/timezone.service';
 import { ToastService } from '../../core/services/toast.service';
 import { TournamentService } from '../../core/services/tournament.service';
 import { formatWithZone } from '../../core/utils/time';
+import { registrationState } from '../../core/utils/tournament';
 import { Button } from '../../shared/ui/button';
 import { Card } from '../../shared/ui/card';
 import { ListRow } from '../../shared/ui/list-row';
@@ -83,8 +84,39 @@ export class TournamentList {
     return `${t.registeredCount}${capacity}${t.teamSize === 2 ? ' teams' : ' participants'}`;
   }
 
+  protected regAction(t: Tournament): { label: string; open: boolean } | null {
+    const state = registrationState(t, this.timezone.now());
+    if (state === 'ended') return null;
+    if (state === 'open') return { label: '⏸️ Close registration', open: false };
+    return { label: '▶️ Open registration now', open: true };
+  }
+
+  protected async setRegistration(t: Tournament, open: boolean): Promise<void> {
+    this.busyId.set(t.id);
+    try {
+      const result = await this.tournamentService.update(
+        t.id,
+        open ? { registrationClosed: false, registrationOpensAt: 0 } : { registrationClosed: true },
+        this.auth.session(),
+      );
+      if (!result) {
+        this.toast.show('Could not update - check permissions.');
+        return;
+      }
+      this.toast.show(open ? 'Registration is open!' : 'Registration closed.');
+      this.changed.emit();
+    } catch (err) {
+      this.toast.show('Something went wrong updating registration.');
+      console.error(err);
+    } finally {
+      this.busyId.set(null);
+    }
+  }
+
   protected registrationText(t: Tournament): string {
-    if (t.status === 'completed' || t.status === 'cancelled' || !t.registrationOpensAt) return '';
+    if (t.status === 'completed' || t.status === 'cancelled') return '';
+    if (t.registrationClosed) return '🔒 registration closed';
+    if (!t.registrationOpensAt) return '';
     const opens = formatWithZone(t.registrationOpensAt, t.createdTZ || DEFAULT_TIMEZONE);
     return t.registrationOpensAt > this.timezone.now()
       ? `🔔 registration opens ${opens}`

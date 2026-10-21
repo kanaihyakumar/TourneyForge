@@ -49,6 +49,7 @@ export function withMeta(id: string, data: TournamentData): Tournament {
     cancelled: !!data.cancelled,
     locked: data.locked !== false,
     registrationOpensAt: Number(data.registrationOpensAt) || 0,
+    registrationClosed: !!data.registrationClosed,
     teamSize,
     gameMode: data.gameMode ?? '',
     format: data.format ?? (teamSize === 2 ? '2v2' : '1v1'),
@@ -128,8 +129,16 @@ export function registrationNotOpenYet(
   return t.registrationOpensAt > now;
 }
 
+export type RegistrationState = 'ended' | 'closed' | 'soon' | 'open';
+
+export function registrationState(t: Tournament, now = Date.now()): RegistrationState {
+  if (t.status === 'completed' || t.status === 'cancelled') return 'ended';
+  if (t.registrationClosed) return 'closed';
+  return registrationNotOpenYet(t, now) ? 'soon' : 'open';
+}
+
 export function isOpenForRegistration(t: Tournament, now = Date.now()): boolean {
-  return (t.status === 'upcoming' || t.status === 'ongoing') && !registrationNotOpenYet(t, now);
+  return registrationState(t, now) === 'open';
 }
 
 export function timeUntil(targetUTC: number, now = Date.now()): string {

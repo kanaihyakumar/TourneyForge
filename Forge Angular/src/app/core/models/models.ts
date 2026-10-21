@@ -152,6 +152,7 @@ export interface TournamentUpdate extends Partial<TournamentInput> {
   cancelled?: boolean;
   completed?: boolean;
   locked?: boolean;
+  registrationClosed?: boolean;
 }
 
 export interface TournamentData {
@@ -183,6 +184,7 @@ export interface TournamentData {
   cancelled?: boolean;
   completed?: boolean;
   locked?: boolean;
+  registrationClosed?: boolean;
   createdAt: number;
   updatedAt: number;
   forgeState?: ForgeState;
@@ -200,6 +202,7 @@ export interface Tournament extends TournamentData {
   completed: boolean;
   cancelled: boolean;
   locked: boolean;
+  registrationClosed: boolean;
   registrationOpensAt: number;
   teamSize: TeamSize;
   gameMode: string;

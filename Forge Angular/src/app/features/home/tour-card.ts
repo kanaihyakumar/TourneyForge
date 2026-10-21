@@ -15,7 +15,7 @@ import { Tournament } from '../../core/models/models';
 import { AuthService } from '../../core/services/auth.service';
 import { TimezoneService } from '../../core/services/timezone.service';
 import { TournamentService } from '../../core/services/tournament.service';
-import { canManage, isFull, registrationNotOpenYet, timeUntil } from '../../core/utils/tournament';
+import { canManage, isFull, registrationState, timeUntil } from '../../core/utils/tournament';
 import { TournamentCredits } from '../../shared/tournament/tournament-credits';
 import { TournamentResults } from '../../shared/tournament/tournament-results';
 import { TournamentTags } from '../../shared/tournament/tournament-tags';
@@ -66,10 +66,10 @@ export class TourCard {
     ['completed', 'cancelled'].includes(this.tournament().status),
   );
 
-  protected readonly comingSoon = computed(
-    () =>
-      !this.registrationClosed() && registrationNotOpenYet(this.tournament(), this.timezone.now()),
+  protected readonly regState = computed(() =>
+    registrationState(this.tournament(), this.timezone.now()),
   );
+  protected readonly comingSoon = computed(() => this.regState() === 'soon');
   protected readonly opensIn = computed(() =>
     timeUntil(this.tournament().registrationOpensAt, this.timezone.now()),
   );

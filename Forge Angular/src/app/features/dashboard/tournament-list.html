@@ -32,6 +32,17 @@
           }
         </ng-container>
         <ng-container ngProjectAs="[rowActions]">
+          @if (regAction(t); as action) {
+            <button
+              type="button"
+              tfButton
+              size="sm"
+              [disabled]="busyId() === t.id"
+              (click)="setRegistration(t, action.open)"
+            >
+              {{ action.label }}
+            </button>
+          }
           <button type="button" tfButton size="sm" (click)="viewParticipants.emit(t.id)">
             👥 Participants
           </button>

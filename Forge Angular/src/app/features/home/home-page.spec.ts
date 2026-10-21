@@ -297,4 +297,33 @@ describe('HomePage', () => {
       Array.from(card.querySelectorAll('button')).some((b) => b.textContent?.includes('Register')),
     ).toBe(true);
   });
+
+  it('shows Registration closed instead of Register when staff close registration', async () => {
+    TestBed.overrideProvider(TournamentService, {
+      useValue: {
+        list: vi.fn().mockResolvedValue([make('shut', { registrationClosed: true })]),
+        get: vi.fn().mockResolvedValue(make('shut', { registrationClosed: true })),
+        myRegistrations: signal<string[]>([]),
+      },
+    });
+    const fixture = TestBed.createComponent(HomePage);
+    const root = fixture.nativeElement as HTMLElement;
+    await fixture.whenStable();
+    await fixture.whenStable();
+
+    const card = root.querySelector('tf-tour-card') as HTMLElement;
+    expect(card.textContent).toContain('Registration closed');
+    const labels = Array.from(card.querySelectorAll('button')).map((b) => b.textContent);
+    expect(labels.some((l) => l?.includes('Register'))).toBe(false);
+
+    (
+      Array.from(card.querySelectorAll('button')).find((b) =>
+        b.textContent?.includes('View details'),
+      ) as HTMLElement
+    ).click();
+    await fixture.whenStable();
+    await fixture.whenStable();
+    expect(root.querySelector('tf-modal')?.textContent).toContain('Registration is closed');
+    expect(root.querySelector('tf-register-form')).toBeNull();
+  });
 });

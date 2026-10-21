@@ -29,7 +29,9 @@
     </button>
   }
   @if (!registrationClosed()) {
-    @if (comingSoon()) {
+    @if (regState() === 'closed') {
+      <tf-badge tone="cancelled">🔒 Registration closed</tf-badge>
+    } @else if (comingSoon()) {
       <tf-badge tone="upcoming">🔔 Registration coming soon · opens in {{ opensIn() }}</tf-badge>
     } @else if (alreadyRegistered()) {
       <tf-badge tone="live">✅ You’re registered</tf-badge>

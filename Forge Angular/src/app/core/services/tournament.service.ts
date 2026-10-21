@@ -47,6 +47,7 @@ const UPDATABLE_FIELDS = [
   'startUTC',
   'createdTZ',
   'registrationOpensAt',
+  'registrationClosed',
   'cancelled',
   'completed',
   'locked',
@@ -257,6 +258,9 @@ export class TournamentService {
     const data = snap.data() as TournamentData;
     if (staff && !canManage(staff, data)) {
       return { ok: false, message: 'You do not have permission to edit this tournament.' };
+    }
+    if (!staff && data.registrationClosed) {
+      return { ok: false, message: 'Registration is closed for this tournament.' };
     }
     if (!staff && Number(data.registrationOpensAt) > Date.now()) {
       return {

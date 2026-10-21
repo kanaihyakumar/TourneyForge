@@ -592,4 +592,42 @@ describe('DashboardPage', () => {
     await settle(fixture);
     expect(sendMessage).toHaveBeenCalledWith('Thanks!');
   });
+
+  it('lets staff open or close registration from the tournament list', async () => {
+    const future = { startUTC: Date.now() + 86_400_000 };
+    current = tournament({ ...future, locked: true, registrationOpensAt: Date.now() + 3600_000 });
+    asOrganizer();
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+
+    expect(root.querySelector('tf-tournament-list')?.textContent).toContain('registration opens');
+    expect(button(root, 'Close registration')).toBeUndefined();
+    button(root, 'Open registration now')?.click();
+    await settle(fixture);
+    expect(update).toHaveBeenLastCalledWith(
+      't1',
+      { registrationClosed: false, registrationOpensAt: 0 },
+      expect.anything(),
+    );
+
+    current = tournament({ ...future, locked: true });
+    button(root, 'Open registration now')?.click();
+    await settle(fixture);
+    fixture.destroy();
+
+    const again = TestBed.createComponent(DashboardPage);
+    const root2 = again.nativeElement as HTMLElement;
+    await settle(again);
+    button(root2, 'Close registration')?.click();
+    await settle(again);
+    expect(update).toHaveBeenLastCalledWith('t1', { registrationClosed: true }, expect.anything());
+
+    current = tournament({ ...future, locked: true, registrationClosed: true });
+    const third = TestBed.createComponent(DashboardPage);
+    const root3 = third.nativeElement as HTMLElement;
+    await settle(third);
+    expect(root3.querySelector('tf-tournament-list')?.textContent).toContain('registration closed');
+    expect(button(root3, 'Open registration now')).toBeDefined();
+  });
 });

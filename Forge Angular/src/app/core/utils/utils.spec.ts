@@ -31,6 +31,7 @@ import {
   parsePrizes,
   podiumRows,
   registrationNotOpenYet,
+  registrationState,
   timeUntil,
   usesFreeRounds,
   withPrizes,
@@ -784,6 +785,12 @@ describe('free-for-all rounds', () => {
     expect(registrationNotOpenYet(later, now)).toBe(true);
     expect(isOpenForRegistration(later, now)).toBe(false);
     expect(isOpenForRegistration(later, now + 3600_000)).toBe(true);
+    expect(registrationState(later, now)).toBe('soon');
+    expect(registrationState(open, now)).toBe('open');
+    expect(registrationState(withMeta('c', { ...base, registrationClosed: true }), now)).toBe(
+      'closed',
+    );
+    expect(registrationState(withMeta('d', { ...base, completed: true }), now)).toBe('ended');
   });
 
   it('describes how long until registration opens', () => {

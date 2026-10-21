@@ -13,7 +13,7 @@ import { TournamentService } from '../../core/services/tournament.service';
 import {
   isFull,
   isOpenForRegistration,
-  registrationNotOpenYet,
+  registrationState,
   timeUntil,
 } from '../../core/utils/tournament';
 import { TournamentCredits } from '../../shared/tournament/tournament-credits';
@@ -58,6 +58,9 @@ import { RegisterForm } from './register-form';
         <tf-tournament-credits [tournament]="t" />
         @if (alreadyRegistered()) {
           <tf-banner icon="✅">You’re already registered for this tournament. Good luck!</tf-banner>
+        }
+        @if (state() === 'closed') {
+          <tf-banner tone="warn" icon="🔒">Registration is closed for this tournament.</tf-banner>
         }
         @if (comingSoon()) {
           <tf-banner icon="🔔">
@@ -108,14 +111,11 @@ export class TournamentDetailModal {
     const t = this.tournament.value();
     return !!t && isOpenForRegistration(t, this.timezone.now());
   });
-  protected readonly comingSoon = computed(() => {
+  protected readonly state = computed(() => {
     const t = this.tournament.value();
-    return (
-      !!t &&
-      (t.status === 'upcoming' || t.status === 'ongoing') &&
-      registrationNotOpenYet(t, this.timezone.now())
-    );
+    return t ? registrationState(t, this.timezone.now()) : 'ended';
   });
+  protected readonly comingSoon = computed(() => this.state() === 'soon');
   protected readonly opensIn = computed(() => {
     const t = this.tournament.value();
     return t ? timeUntil(t.registrationOpensAt, this.timezone.now()) : '';

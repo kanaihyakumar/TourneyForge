@@ -102,4 +102,11 @@ export const LOCKED_NOTICE = `This tournament is published and locked. To change
 
 export const PUBLISH_NOTICE = `Are you sure you want to publish this tournament? Once published it cannot be edited or deleted. To make changes afterwards, contact Speedy on Plato (platoid: ${CONTACT_PLATO_ID}) or on Discord (${DISCORD_ICON} ${CONTACT_DISCORD_ID}).`;
 
-export const LOCK_EXEMPT_FIELDS = ['completed', 'cancelled', 'winners', 'closingMessage'];
+export const LOCK_EXEMPT_FIELDS = [
+  'completed',
+  'cancelled',
+  'winners',
+  'closingMessage',
+  'registrationOpensAt',
+  'registrationClosed',
+];

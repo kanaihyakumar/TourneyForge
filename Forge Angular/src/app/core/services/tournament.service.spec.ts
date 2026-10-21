@@ -293,4 +293,24 @@ describe('TournamentService.replaceParticipant', () => {
     const cleared = await service.update('t1', { registrationOpensAt: 0 }, organizer);
     expect(cleared?.registrationOpensAt).toBe(0);
   });
+
+  it('lets an organizer open or close registration even on a published tournament', async () => {
+    store.data['locked'] = true;
+    store.data['registrationClosed'] = true;
+    const early = await service.register('t1', 'Fay', 'Gus');
+    expect(early.ok).toBe(false);
+    expect(early.message).toContain('closed');
+
+    const reopened = await service.update(
+      't1',
+      { registrationClosed: false, registrationOpensAt: 0 },
+      organizer,
+    );
+    expect(reopened?.registrationClosed).toBe(false);
+    store.data['registrationClosed'] = false;
+    expect((await service.register('t1', 'Fay', 'Gus')).ok).toBe(true);
+
+    expect(await service.update('t1', { registrationClosed: true }, organizer)).not.toBeNull();
+    expect(await service.update('t1', { title: 'Nope' }, organizer)).toBeNull();
+  });
 });
