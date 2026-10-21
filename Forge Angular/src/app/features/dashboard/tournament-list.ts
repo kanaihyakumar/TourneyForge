@@ -1,5 +1,10 @@
 import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
-import { DEFAULT_TIMEZONE, LOCKED_NOTICE } from '../../core/config/constants';
+import {
+  ADMIN_OWNER_ID,
+  ADMIN_OWNER_NAME,
+  DEFAULT_TIMEZONE,
+  LOCKED_NOTICE,
+} from '../../core/config/constants';
 import { Organizer, Tournament } from '../../core/models/models';
 import { AuthService } from '../../core/services/auth.service';
 import { ForgeImportService } from '../../core/services/forge-import.service';
@@ -142,8 +147,14 @@ export class TournamentList {
 
   protected coManagers(t: Tournament): string {
     return t.managerIds
-      .map((id) => this.organizers().find((o) => o.id === id)?.displayName ?? id)
+      .map((id) => this.organizers().find((o) => o.id === id)?.displayName)
+      .filter(Boolean)
       .join(', ');
+  }
+
+  protected assignedTo(t: Tournament): string {
+    if (!t.organizerId || t.organizerId === ADMIN_OWNER_ID) return ADMIN_OWNER_NAME;
+    return this.organizers().find((o) => o.id === t.organizerId)?.displayName ?? t.organizerName;
   }
 
   protected async toggleCompleted(t: Tournament): Promise<void> {

@@ -7,6 +7,7 @@ const store = vi.hoisted(() => ({
   data: {} as Record<string, unknown>,
   updates: [] as Record<string, unknown>[],
   owned: 0,
+  managed: [] as Record<string, unknown>[],
 }));
 
 vi.mock('firebase/firestore', () => ({
@@ -14,7 +15,12 @@ vi.mock('firebase/firestore', () => ({
   collection: () => ({}),
   query: () => ({}),
   where: () => ({}),
-  getDocs: () => Promise.resolve({ docs: Array.from({ length: store.owned }) }),
+  getDocs: () =>
+    Promise.resolve({
+      docs: store.managed.length
+        ? store.managed.map((data) => ({ id: 't1', data: () => data }))
+        : Array.from({ length: store.owned }),
+    }),
   getDoc: () => Promise.resolve({ exists: () => true, id: 't1', data: () => store.data }),
   updateDoc: (_ref: unknown, patch: Record<string, unknown>) => {
     store.updates.push(patch);
@@ -35,6 +41,7 @@ describe('TournamentService.replaceParticipant', () => {
   beforeEach(() => {
     store.updates.length = 0;
     store.owned = 0;
+    store.managed = [];
     store.data = {
       teamSize: 2,
       slots: 8,
@@ -339,5 +346,11 @@ describe('TournamentService.replaceParticipant', () => {
 
     const removed = await service.assign('t1', null, admin);
     expect(removed).toMatchObject({ organizerId: 'admin', organizerName: 'Admin' });
+  });
+
+  it('drops a deleted organizer from every co-manager list', async () => {
+    store.managed = [{ managerIds: ['gone', 'o1'] }];
+    await service.removeManagerEverywhere('gone');
+    expect(store.updates.at(-1)).toEqual({ managerIds: ['o1'] });
   });
 });

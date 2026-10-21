@@ -7,6 +7,7 @@ import {
   OrganizerUpdate,
   Session,
 } from '../models/models';
+import { ADMIN_OWNER_ID, ADMIN_OWNER_NAME } from '../config/constants';
 import { FirestoreService } from './firestore.service';
 import { TournamentService } from './tournament.service';
 
@@ -67,6 +68,10 @@ export class OrganizerService {
 
   async remove(id: string): Promise<void> {
     await this.firestore.deleteDoc(this.ref(id));
-    await this.tournaments.patchByOrganizer(id, { organizerId: 'admin' });
+    await this.tournaments.patchByOrganizer(id, {
+      organizerId: ADMIN_OWNER_ID,
+      organizerName: ADMIN_OWNER_NAME,
+    });
+    await this.tournaments.removeManagerEverywhere(id);
   }
 }

@@ -250,6 +250,24 @@ export class TournamentService {
     return withMeta(id, { ...existing, ...updates });
   }
 
+  async removeManagerEverywhere(organizerId: string): Promise<void> {
+    const snap = await this.firestore.getDocs(
+      query(
+        collection(this.firestore.db, 'tournaments'),
+        where('managerIds', 'array-contains', organizerId),
+      ),
+    );
+    await Promise.all(
+      snap.docs.map((d) =>
+        this.firestore.updateDoc(this.ref(d.id), {
+          managerIds: ((d.data() as TournamentData).managerIds ?? []).filter(
+            (id) => id !== organizerId,
+          ),
+        }),
+      ),
+    );
+  }
+
   async patchByOrganizer(organizerId: string, patch: Partial<TournamentData>): Promise<void> {
     const snap = await this.firestore.getDocs(
       query(collection(this.firestore.db, 'tournaments'), where('organizerId', '==', organizerId)),

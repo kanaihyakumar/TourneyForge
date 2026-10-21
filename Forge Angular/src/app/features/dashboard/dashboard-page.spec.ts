@@ -722,4 +722,31 @@ describe('DashboardPage', () => {
     await settle(fixture);
     expect(button(root, 'Assign')).toBeUndefined();
   });
+
+  it('hides co-managers and owners that no longer exist as organizers', async () => {
+    current = tournament({
+      organizerId: 'admin',
+      organizerName: 'Bella',
+      managerIds: ['o2', 'deleted-1', 'deleted-2'],
+    });
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+
+    const text = (root.querySelector('tf-tournament-list')?.textContent ?? '').replace(/\s+/g, ' ');
+    expect(text).toContain('co-managed by Bella');
+    expect(text).not.toContain('deleted-1');
+    expect(text).not.toContain('deleted-2');
+    expect(text).toContain('assigned to Admin');
+    fixture.destroy();
+
+    current = tournament({
+      organizerId: 'admin',
+      organizerName: 'Admin',
+      managerIds: ['deleted-1'],
+    });
+    const again = TestBed.createComponent(DashboardPage);
+    await settle(again);
+    expect((again.nativeElement as HTMLElement).textContent).not.toContain('co-managed');
+  });
 });

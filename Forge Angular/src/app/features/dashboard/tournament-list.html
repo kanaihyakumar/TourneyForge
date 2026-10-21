@@ -25,7 +25,7 @@
             · {{ reg }}
           }
           @if (auth.isAdmin()) {
-            · assigned to {{ t.organizerName || 'admin' }}
+            · assigned to {{ assignedTo(t) }}
             @if (coManagers(t); as names) {
               · co-managed by {{ names }}
             }
