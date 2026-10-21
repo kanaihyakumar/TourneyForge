@@ -48,6 +48,7 @@ const UPDATABLE_FIELDS = [
   'createdTZ',
   'registrationOpensAt',
   'registrationClosed',
+  'registrationSoon',
   'cancelled',
   'completed',
   'locked',
@@ -262,14 +263,12 @@ export class TournamentService {
     if (!staff && data.registrationClosed) {
       return { ok: false, message: 'Registration is closed for this tournament.' };
     }
-    if (!staff && Number(data.registrationOpensAt) > Date.now()) {
-      return {
-        ok: false,
-        message: `Registration hasn't opened yet. It opens ${formatWithZone(
-          Number(data.registrationOpensAt),
-          data.createdTZ || DEFAULT_TIMEZONE,
-        )}.`,
-      };
+    const scheduled = Number(data.registrationOpensAt) > Date.now();
+    if (!staff && (data.registrationSoon || scheduled)) {
+      const when = scheduled
+        ? ` It opens ${formatWithZone(Number(data.registrationOpensAt), data.createdTZ || DEFAULT_TIMEZONE)}.`
+        : '';
+      return { ok: false, message: `Registration hasn't opened yet.${when}` };
     }
     const who = staff ? 'the' : 'your';
     const registrations = data.registrations || [];

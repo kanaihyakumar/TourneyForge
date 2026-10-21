@@ -786,6 +786,7 @@ describe('free-for-all rounds', () => {
     expect(isOpenForRegistration(later, now)).toBe(false);
     expect(isOpenForRegistration(later, now + 3600_000)).toBe(true);
     expect(registrationState(later, now)).toBe('soon');
+    expect(registrationState(withMeta('s', { ...base, registrationSoon: true }), now)).toBe('soon');
     expect(registrationState(open, now)).toBe('open');
     expect(registrationState(withMeta('c', { ...base, registrationClosed: true }), now)).toBe(
       'closed',

@@ -358,4 +358,25 @@ describe('HomePage', () => {
     await fixture.whenStable();
     expect(root.querySelector('tf-slideshow')).toBeNull();
   });
+
+  it('shows coming soon without a countdown when staff set it manually', async () => {
+    TestBed.overrideProvider(TournamentService, {
+      useValue: {
+        list: vi.fn().mockResolvedValue([make('manual', { registrationSoon: true })]),
+        myRegistrations: signal<string[]>([]),
+      },
+    });
+    const fixture = TestBed.createComponent(HomePage);
+    const root = fixture.nativeElement as HTMLElement;
+    await fixture.whenStable();
+    await fixture.whenStable();
+
+    const card = root.querySelector('tf-tour-card') as HTMLElement;
+    const text = (card.textContent ?? '').replace(/\s+/g, ' ');
+    expect(text).toContain('Registration coming soon');
+    expect(text).not.toContain('opens in');
+    expect(text).not.toContain('Registration opens');
+    const labels = Array.from(card.querySelectorAll('button')).map((b) => b.textContent);
+    expect(labels.some((l) => l?.includes('Register'))).toBe(false);
+  });
 });

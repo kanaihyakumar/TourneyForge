@@ -593,41 +593,82 @@ describe('DashboardPage', () => {
     expect(sendMessage).toHaveBeenCalledWith('Thanks!');
   });
 
-  it('lets staff open or close registration from the tournament list', async () => {
+  it('switches registration between soon, open and closed with one control', async () => {
     const future = { startUTC: Date.now() + 86_400_000 };
-    current = tournament({ ...future, locked: true, registrationOpensAt: Date.now() + 3600_000 });
+    const segments = (root: HTMLElement) =>
+      Array.from(root.querySelectorAll('tf-segmented [role="radio"]')) as HTMLButtonElement[];
+    const active = (root: HTMLElement) =>
+      segments(root)
+        .filter((b) => b.getAttribute('aria-checked') === 'true')
+        .map((b) => b.textContent?.trim());
+    const pick = async (
+      fixture: { whenStable(): Promise<unknown> },
+      root: HTMLElement,
+      label: string,
+    ) => {
+      segments(root)
+        .find((b) => b.textContent?.includes(label))
+        ?.click();
+      await settle(fixture as never);
+    };
+
+    current = tournament({ ...future, locked: true });
+    update.mockImplementation(async (_id: string, patch: Record<string, unknown>) => {
+      current = tournament({ ...future, locked: true, ...patch });
+      return current;
+    });
     asOrganizer();
     const fixture = TestBed.createComponent(DashboardPage);
     const root = fixture.nativeElement as HTMLElement;
     await settle(fixture);
+    expect(segments(root).map((b) => b.textContent?.trim())).toEqual([
+      '🔔 Soon',
+      '⚔️ Open',
+      '🔒 Closed',
+    ]);
+    expect(active(root)).toEqual(['⚔️ Open']);
 
-    expect(root.querySelector('tf-tournament-list')?.textContent).toContain('registration opens');
-    expect(button(root, 'Close registration')).toBeUndefined();
-    button(root, 'Open registration now')?.click();
-    await settle(fixture);
+    await pick(fixture, root, 'Soon');
     expect(update).toHaveBeenLastCalledWith(
       't1',
-      { registrationClosed: false, registrationOpensAt: 0 },
+      { registrationSoon: true, registrationClosed: false },
       expect.anything(),
     );
-
-    current = tournament({ ...future, locked: true });
-    button(root, 'Open registration now')?.click();
-    await settle(fixture);
+    await pick(fixture, root, 'Closed');
+    expect(update).toHaveBeenLastCalledWith(
+      't1',
+      { registrationSoon: false, registrationClosed: true },
+      expect.anything(),
+    );
+    await pick(fixture, root, 'Open');
+    expect(update).toHaveBeenLastCalledWith(
+      't1',
+      { registrationSoon: false, registrationClosed: false, registrationOpensAt: 0 },
+      expect.anything(),
+    );
+    const calls = update.mock.calls.length;
+    await pick(fixture, root, 'Open');
+    expect(update.mock.calls.length).toBe(calls);
     fixture.destroy();
 
-    const again = TestBed.createComponent(DashboardPage);
-    const root2 = again.nativeElement as HTMLElement;
-    await settle(again);
-    button(root2, 'Close registration')?.click();
-    await settle(again);
-    expect(update).toHaveBeenLastCalledWith('t1', { registrationClosed: true }, expect.anything());
+    const states: [Record<string, unknown>, string, string][] = [
+      [{ registrationSoon: true }, '🔔 Soon', 'registration coming soon'],
+      [{ registrationOpensAt: Date.now() + 3600_000 }, '🔔 Soon', 'registration opens'],
+      [{ registrationClosed: true }, '🔒 Closed', 'registration closed'],
+    ];
+    for (const [over, label, text] of states) {
+      current = tournament({ ...future, locked: true, ...over });
+      const next = TestBed.createComponent(DashboardPage);
+      const nextRoot = next.nativeElement as HTMLElement;
+      await settle(next);
+      expect(active(nextRoot)).toEqual([label]);
+      expect(nextRoot.querySelector('tf-tournament-list')?.textContent).toContain(text);
+      next.destroy();
+    }
 
-    current = tournament({ ...future, locked: true, registrationClosed: true });
-    const third = TestBed.createComponent(DashboardPage);
-    const root3 = third.nativeElement as HTMLElement;
-    await settle(third);
-    expect(root3.querySelector('tf-tournament-list')?.textContent).toContain('registration closed');
-    expect(button(root3, 'Open registration now')).toBeDefined();
+    current = tournament({ locked: true });
+    const done = TestBed.createComponent(DashboardPage);
+    await settle(done);
+    expect((done.nativeElement as HTMLElement).querySelector('tf-segmented')).toBeNull();
   });
 });

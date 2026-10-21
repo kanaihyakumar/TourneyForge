@@ -64,8 +64,13 @@ import { RegisterForm } from './register-form';
         }
         @if (comingSoon()) {
           <tf-banner icon="🔔">
-            Registration coming soon - it opens {{ timezone.format(t.registrationOpensAt) }} (in
-            {{ opensIn() }}). Come back then to join!
+            Registration coming soon.
+            @if (t.registrationOpensAt > timezone.now()) {
+              It opens {{ timezone.format(t.registrationOpensAt) }} (in {{ opensIn() }}). Come back
+              then to join!
+            } @else {
+              Check back shortly to join!
+            }
           </tf-banner>
         }
         @if (canRegister()) {

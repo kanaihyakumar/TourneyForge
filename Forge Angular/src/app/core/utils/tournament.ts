@@ -50,6 +50,7 @@ export function withMeta(id: string, data: TournamentData): Tournament {
     locked: data.locked !== false,
     registrationOpensAt: Number(data.registrationOpensAt) || 0,
     registrationClosed: !!data.registrationClosed,
+    registrationSoon: !!data.registrationSoon,
     teamSize,
     gameMode: data.gameMode ?? '',
     format: data.format ?? (teamSize === 2 ? '2v2' : '1v1'),
@@ -123,10 +124,10 @@ export function canManage(
 }
 
 export function registrationNotOpenYet(
-  t: Pick<Tournament, 'registrationOpensAt'>,
+  t: Pick<Tournament, 'registrationOpensAt' | 'registrationSoon'>,
   now = Date.now(),
 ): boolean {
-  return t.registrationOpensAt > now;
+  return t.registrationSoon || t.registrationOpensAt > now;
 }
 
 export type RegistrationState = 'ended' | 'closed' | 'soon' | 'open';

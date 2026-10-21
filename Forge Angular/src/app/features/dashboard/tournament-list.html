@@ -32,16 +32,14 @@
           }
         </ng-container>
         <ng-container ngProjectAs="[rowActions]">
-          @if (regAction(t); as action) {
-            <button
-              type="button"
-              tfButton
-              size="sm"
+          @if (regValue(t); as mode) {
+            <tf-segmented
+              label="Registration"
+              [options]="registrationOptions"
+              [value]="mode"
               [disabled]="busyId() === t.id"
-              (click)="setRegistration(t, action.open)"
-            >
-              {{ action.label }}
-            </button>
+              (picked)="setRegistration(t, $event)"
+            />
           }
           <button type="button" tfButton size="sm" (click)="viewParticipants.emit(t.id)">
             👥 Participants

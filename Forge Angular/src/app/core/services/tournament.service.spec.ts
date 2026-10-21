@@ -306,11 +306,23 @@ describe('TournamentService.replaceParticipant', () => {
       { registrationClosed: false, registrationOpensAt: 0 },
       organizer,
     );
+    expect(await service.update('t1', { registrationSoon: true }, organizer)).not.toBeNull();
     expect(reopened?.registrationClosed).toBe(false);
     store.data['registrationClosed'] = false;
     expect((await service.register('t1', 'Fay', 'Gus')).ok).toBe(true);
 
     expect(await service.update('t1', { registrationClosed: true }, organizer)).not.toBeNull();
     expect(await service.update('t1', { title: 'Nope' }, organizer)).toBeNull();
+  });
+
+  it('refuses public registration while it is set to coming soon, with no time needed', async () => {
+    store.data['registrationSoon'] = true;
+    const blocked = await service.register('t1', 'Fay', 'Gus');
+    expect(blocked.ok).toBe(false);
+    expect(blocked.message).toBe("Registration hasn't opened yet.");
+    expect((await service.addParticipant('t1', 'Fay', 'Gus', admin)).ok).toBe(true);
+
+    store.data['registrationSoon'] = false;
+    expect((await service.register('t1', 'Hal', 'Ida')).ok).toBe(true);
   });
 });

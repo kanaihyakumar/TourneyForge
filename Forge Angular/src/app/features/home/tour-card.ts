@@ -70,6 +70,9 @@ export class TourCard {
     registrationState(this.tournament(), this.timezone.now()),
   );
   protected readonly comingSoon = computed(() => this.regState() === 'soon');
+  protected readonly scheduled = computed(
+    () => this.tournament().registrationOpensAt > this.timezone.now(),
+  );
   protected readonly opensIn = computed(() =>
     timeUntil(this.tournament().registrationOpensAt, this.timezone.now()),
   );

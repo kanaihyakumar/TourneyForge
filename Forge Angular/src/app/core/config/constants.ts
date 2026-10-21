@@ -109,4 +109,5 @@ export const LOCK_EXEMPT_FIELDS = [
   'closingMessage',
   'registrationOpensAt',
   'registrationClosed',
+  'registrationSoon',
 ];

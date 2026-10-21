@@ -11,12 +11,13 @@ import { registrationState } from '../../core/utils/tournament';
 import { Button } from '../../shared/ui/button';
 import { Card } from '../../shared/ui/card';
 import { ListRow } from '../../shared/ui/list-row';
+import { Segmented, SegmentOption } from '../../shared/ui/segmented';
 import { StatusBadge } from '../../shared/ui/status-badge';
 import { Tag } from '../../shared/ui/tag';
 
 @Component({
   selector: 'tf-tournament-list',
-  imports: [Card, ListRow, StatusBadge, Button, Tag],
+  imports: [Card, ListRow, StatusBadge, Button, Tag, Segmented],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './tournament-list.html',
 })
@@ -84,26 +85,38 @@ export class TournamentList {
     return `${t.registeredCount}${capacity}${t.teamSize === 2 ? ' teams' : ' participants'}`;
   }
 
-  protected regAction(t: Tournament): { label: string; open: boolean } | null {
+  protected readonly registrationOptions: SegmentOption[] = [
+    { value: 'soon', label: '🔔 Soon', title: 'Show "Registration coming soon"' },
+    { value: 'open', label: '⚔️ Open', title: 'Let players register' },
+    { value: 'closed', label: '🔒 Closed', title: 'Stop new registrations' },
+  ];
+
+  protected regValue(t: Tournament): string | null {
     const state = registrationState(t, this.timezone.now());
-    if (state === 'ended') return null;
-    if (state === 'open') return { label: '⏸️ Close registration', open: false };
-    return { label: '▶️ Open registration now', open: true };
+    return state === 'ended' ? null : state;
   }
 
-  protected async setRegistration(t: Tournament, open: boolean): Promise<void> {
+  protected async setRegistration(t: Tournament, mode: string): Promise<void> {
+    const patch =
+      mode === 'soon'
+        ? { registrationSoon: true, registrationClosed: false }
+        : mode === 'closed'
+          ? { registrationSoon: false, registrationClosed: true }
+          : { registrationSoon: false, registrationClosed: false, registrationOpensAt: 0 };
     this.busyId.set(t.id);
     try {
-      const result = await this.tournamentService.update(
-        t.id,
-        open ? { registrationClosed: false, registrationOpensAt: 0 } : { registrationClosed: true },
-        this.auth.session(),
-      );
+      const result = await this.tournamentService.update(t.id, patch, this.auth.session());
       if (!result) {
         this.toast.show('Could not update - check permissions.');
         return;
       }
-      this.toast.show(open ? 'Registration is open!' : 'Registration closed.');
+      this.toast.show(
+        mode === 'soon'
+          ? 'Registration set to coming soon.'
+          : mode === 'closed'
+            ? 'Registration closed.'
+            : 'Registration is open!',
+      );
       this.changed.emit();
     } catch (err) {
       this.toast.show('Something went wrong updating registration.');
@@ -116,6 +129,9 @@ export class TournamentList {
   protected registrationText(t: Tournament): string {
     if (t.status === 'completed' || t.status === 'cancelled') return '';
     if (t.registrationClosed) return '🔒 registration closed';
+    if (t.registrationSoon && t.registrationOpensAt <= this.timezone.now()) {
+      return '🔔 registration coming soon';
+    }
     if (!t.registrationOpensAt) return '';
     const opens = formatWithZone(t.registrationOpensAt, t.createdTZ || DEFAULT_TIMEZONE);
     return t.registrationOpensAt > this.timezone.now()

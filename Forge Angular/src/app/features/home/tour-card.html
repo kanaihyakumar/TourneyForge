@@ -16,7 +16,7 @@
   </button>
 }
 <tf-tournament-credits [tournament]="tournament()" />
-@if (comingSoon()) {
+@if (comingSoon() && scheduled()) {
   <p class="opens">⏳ Registration opens {{ opensAt() }}</p>
 }
 <div class="footer">
@@ -32,7 +32,12 @@
     @if (regState() === 'closed') {
       <tf-badge tone="cancelled">🔒 Registration closed</tf-badge>
     } @else if (comingSoon()) {
-      <tf-badge tone="upcoming">🔔 Registration coming soon · opens in {{ opensIn() }}</tf-badge>
+      <tf-badge tone="upcoming"
+        >🔔 Registration coming soon
+        @if (scheduled()) {
+          · opens in {{ opensIn() }}
+        }
+      </tf-badge>
     } @else if (alreadyRegistered()) {
       <tf-badge tone="live">✅ You’re registered</tf-badge>
     } @else if (full()) {
