@@ -187,6 +187,34 @@ export class UsagePanel {
     }
   }
 
+  protected async deleteSelected(): Promise<void> {
+    const ids = this.selected();
+    if (!ids.length) return;
+    const titles = this.tournamentList()
+      .filter((t) => ids.includes(t.id))
+      .map((t) => `• ${t.title}`)
+      .join('\n');
+    if (
+      !confirm(
+        `Permanently delete ${ids.length} tournament${ids.length === 1 ? '' : 's'} and all of ${ids.length === 1 ? 'its' : 'their'} data?\n\n${titles}\n\nThis cannot be undone.`,
+      )
+    )
+      return;
+    this.bulkBusy.set(true);
+    try {
+      const count = await this.tournaments.removeMany(ids, this.auth.session());
+      this.toast.show(`Deleted ${count} tournament${count === 1 ? '' : 's'}.`);
+      this.selected.set([]);
+      this.changed.emit();
+      if (this.storage()) await this.estimate();
+    } catch (err) {
+      this.toast.show('Something went wrong deleting the tournaments.');
+      console.error(err);
+    } finally {
+      this.bulkBusy.set(false);
+    }
+  }
+
   protected async onCleared(): Promise<void> {
     this.changed.emit();
     await this.estimate();

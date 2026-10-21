@@ -1,5 +1,5 @@
 import { booleanAttribute, ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../core/services/auth.service';
 import { Button } from '../shared/ui/button';
 import { Tag } from '../shared/ui/tag';
@@ -19,7 +19,7 @@ import { Chip } from '../shared/ui/chip';
           🛠️ {{ session.role === 'admin' ? 'Admin Dashboard' : 'My Dashboard' }}
         </a>
       }
-      <button type="button" tfButton size="sm" (click)="auth.logout()">Logout</button>
+      <button type="button" tfButton size="sm" (click)="logout()">Logout</button>
     } @else {
       <button type="button" tfButton variant="primary" size="sm" (click)="auth.openLogin()">
         🔐 <span class="long">Organizer / Admin</span>Login
@@ -40,5 +40,11 @@ import { Chip } from '../shared/ui/chip';
 })
 export class AccountActions {
   protected readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
   readonly hideDashboardLink = input(false, { transform: booleanAttribute });
+
+  protected logout(): void {
+    this.auth.logout();
+    void this.router.navigateByUrl('/');
+  }
 }

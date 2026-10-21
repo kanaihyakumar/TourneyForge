@@ -1,11 +1,12 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { CONTACT_DISCORD_ID, CONTACT_PLATO_ID, DISCORD_ICON } from '../core/config/constants';
 
 @Component({
   selector: 'tf-contact-line',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     Want to use TourneyForge for your own group? Contact <span class="handle">Speedy</span> on Plato
-    (platoid: Speedy40).
+    (platoid: {{ platoId }}) or on Discord ({{ discordIcon }} {{ discordId }}).
   `,
   styles: `
     :host {
@@ -24,4 +25,8 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
     }
   `,
 })
-export class ContactLine {}
+export class ContactLine {
+  protected readonly platoId = CONTACT_PLATO_ID;
+  protected readonly discordId = CONTACT_DISCORD_ID;
+  protected readonly discordIcon = DISCORD_ICON;
+}

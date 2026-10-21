@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { CONTACT_DISCORD_ID, CONTACT_PLATO_ID, DISCORD_ICON } from '../core/config/constants';
 
 @Component({
   selector: 'tf-credit-line',
@@ -6,7 +7,7 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
   template: `
     <div>
       Made with <span class="heart">❤️</span> by <span class="handle">Speedy</span> (platoid:
-      Speedy40)
+      {{ platoId }} · {{ discordIcon }} discord: {{ discordId }})
     </div>
     <div class="thanks">
       Enjoying TourneyForge? Show some love - send Speedy an ✨ aura or a 🎁 gift on Plato. It keeps
@@ -33,4 +34,8 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
     }
   `,
 })
-export class CreditLine {}
+export class CreditLine {
+  protected readonly platoId = CONTACT_PLATO_ID;
+  protected readonly discordId = CONTACT_DISCORD_ID;
+  protected readonly discordIcon = DISCORD_ICON;
+}

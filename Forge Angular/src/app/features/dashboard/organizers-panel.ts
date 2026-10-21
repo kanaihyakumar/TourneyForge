@@ -47,6 +47,7 @@ export class OrganizersPanel {
     username: '',
     password: '',
     canManageOrganizers: false,
+    maxTournaments: '0',
   });
   protected readonly editing = signal<Organizer | null>(null);
   protected readonly resetting = signal<Organizer | null>(null);
@@ -65,10 +66,11 @@ export class OrganizersPanel {
           ...value,
           username,
           canManageOrganizers: this.auth.isAdmin() && value.canManageOrganizers,
+          maxTournaments: this.auth.isAdmin() ? Number(value.maxTournaments) || 0 : 0,
         },
         this.auth.session(),
       );
-      this.form.reset();
+      this.form.reset({ maxTournaments: '0' });
       this.changed.emit();
       this.toast.show('Organizer created!');
     } catch (err) {

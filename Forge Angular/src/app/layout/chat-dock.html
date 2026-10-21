@@ -1,0 +1,211 @@
+@if (auth.session(); as session) {
+  <button
+    type="button"
+    class="fab"
+    [class.alert]="badge() > 0 && !live.dockOpen()"
+    [attr.aria-expanded]="live.dockOpen()"
+    aria-label="Live chat"
+    (click)="live.setDock(!live.dockOpen())"
+  >
+    {{ live.dockOpen() ? '✕' : '💬' }}
+    @if (badge() > 0 && !live.dockOpen()) {
+      <span class="badge">{{ badge() }}</span>
+    }
+  </button>
+
+  @if (live.dockOpen()) {
+    <section class="panel" role="dialog" aria-label="Live chat">
+      <header>
+        <strong>{{ session.role === 'admin' ? '💬 Live chats' : '💬 Chat with admin' }}</strong>
+        <button type="button" class="close" aria-label="Close panel" (click)="live.setDock(false)">
+          ✕
+        </button>
+      </header>
+      <p class="notice">
+        🔒 Live chats go straight between browsers and are never saved. They vanish when the admin
+        closes the chat.
+      </p>
+
+      @if (session.role === 'admin') {
+        @switch (live.adminLink()) {
+          @case ('starting') {
+            <p class="note">Connecting to the live chat network…</p>
+          }
+          @case ('taken') {
+            <p class="note warn">
+              Live chat is already open in another tab or window. Close it there to use it here.
+            </p>
+          }
+          @case ('error') {
+            <p class="note warn">Couldn’t reach the live chat network. Retrying…</p>
+          }
+        }
+        @if (inbox.unread()) {
+          <a class="mail" routerLink="/dashboard" [queryParams]="{ tab: 'notifications' }">
+            📬 {{ inbox.unread() }} unread message{{ inbox.unread() === 1 ? '' : 's' }} - open
+            Notifications
+          </a>
+        }
+        @if (live.chats().length) {
+          <div class="chips" role="tablist">
+            @for (chat of live.chats(); track chat.id) {
+              <button
+                type="button"
+                role="tab"
+                class="chip"
+                [class.on]="live.selectedId() === chat.id"
+                [attr.aria-selected]="live.selectedId() === chat.id"
+                (click)="live.select(chat.id)"
+              >
+                {{ chat.status === 'pending' ? '🔔' : chat.status === 'active' ? '💬' : '⚠️' }}
+                {{ chat.organizerName }}
+                @if (chat.unread) {
+                  <span class="dot">{{ chat.unread }}</span>
+                }
+              </button>
+            }
+          </div>
+        } @else {
+          <p class="note">
+            No live chat requests right now. New requests show up here and in the Notifications tab.
+          </p>
+        }
+        @if (live.selected(); as chat) {
+          @if (chat.status === 'pending') {
+            <div class="request">
+              <p>
+                <strong>{{ chat.organizerName }}</strong> asked for a live chat
+                {{ waitedFor(chat.since) }}.
+              </p>
+              <div class="actions">
+                <button
+                  type="button"
+                  tfButton
+                  variant="primary"
+                  size="sm"
+                  (click)="live.accept(chat.id)"
+                >
+                  ▶️ Start chat
+                </button>
+                <button type="button" tfButton size="sm" (click)="live.closeChat(chat.id)">
+                  Decline
+                </button>
+              </div>
+            </div>
+          } @else {
+            @if (chat.status === 'disconnected') {
+              <p class="note warn">{{ chat.organizerName }} disconnected.</p>
+            }
+            <tf-chat-thread
+              [lines]="chat.lines"
+              [disabled]="chat.status !== 'active'"
+              [placeholder]="'Message ' + chat.organizerName"
+              emptyText="Say hello 👋"
+              (sent)="live.sendAsAdmin(chat.id, $event)"
+            />
+            <div class="actions">
+              <button
+                type="button"
+                tfButton
+                variant="danger"
+                size="sm"
+                (click)="closeChat(chat.id, chat.organizerName)"
+              >
+                🛑 Close chat
+              </button>
+            </div>
+          }
+        }
+      } @else {
+        @switch (live.status()) {
+          @case ('idle') {
+            <p class="note">
+              Need a quick answer? Request a live chat. If the admin is online they’ll accept and
+              you can talk right here.
+            </p>
+            <div class="actions">
+              <button
+                type="button"
+                tfButton
+                variant="primary"
+                size="sm"
+                (click)="live.requestChat()"
+              >
+                🙋 Request live chat
+              </button>
+            </div>
+            <a class="mail" routerLink="/dashboard" [queryParams]="{ tab: 'messages' }">
+              ✉️ Or leave a message the admin can reply to later
+            </a>
+          }
+          @case ('connecting') {
+            <p class="note">Reaching the admin…</p>
+            <div class="actions">
+              <button type="button" tfButton size="sm" (click)="live.cancelRequest()">
+                Cancel
+              </button>
+            </div>
+          }
+          @case ('waiting') {
+            <p class="note">
+              ⏳ Request sent. Waiting for the admin to accept - you can keep this open or close the
+              panel and we’ll alert you.
+            </p>
+            <div class="actions">
+              <button type="button" tfButton size="sm" (click)="live.cancelRequest()">
+                Cancel request
+              </button>
+            </div>
+          }
+          @case ('unavailable') {
+            <p class="note warn">
+              The admin isn’t online right now. Leave a message and they’ll reply from their
+              dashboard.
+            </p>
+            <div class="actions">
+              <button type="button" tfButton size="sm" (click)="live.requestChat()">
+                Try again
+              </button>
+            </div>
+            <a class="mail" routerLink="/dashboard" [queryParams]="{ tab: 'messages' }">
+              ✉️ Leave a message
+            </a>
+          }
+          @default {
+            @if (live.status() === 'active') {
+              <p class="note">Connected. Only the admin can end this chat.</p>
+            } @else if (live.status() === 'closed') {
+              <p class="note warn">
+                The admin closed this chat. It wasn’t saved - copy anything you need now.
+              </p>
+            } @else {
+              <p class="note warn">Connection lost.</p>
+            }
+            <tf-chat-thread
+              [lines]="live.lines()"
+              [disabled]="live.status() !== 'active'"
+              placeholder="Message the admin"
+              emptyText="You’re connected - say hello 👋"
+              (sent)="live.sendAsOrganizer($event)"
+            />
+            @if (live.status() !== 'active') {
+              <div class="actions">
+                <button type="button" tfButton size="sm" (click)="live.requestChat()">
+                  🙋 Request again
+                </button>
+                <button type="button" tfButton size="sm" (click)="live.dismissOrganizerChat()">
+                  Dismiss
+                </button>
+              </div>
+            }
+          }
+        }
+        @if (inbox.unread()) {
+          <a class="mail" routerLink="/dashboard" [queryParams]="{ tab: 'messages' }">
+            📬 The admin replied to your message
+          </a>
+        }
+      }
+    </section>
+  }
+}

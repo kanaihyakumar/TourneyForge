@@ -8,9 +8,13 @@ import { OrganizerService } from '../../core/services/organizer.service';
 import { TournamentService } from '../../core/services/tournament.service';
 import { withMeta } from '../../core/utils/tournament';
 import { UsageService } from '../../core/services/usage.service';
+import { InboxService } from '../../core/services/inbox.service';
+import { PEER_FACTORY } from '../../core/services/chat-transport';
+import { FakePeerHub } from '../../core/services/testing/fake-peers';
+import { InboxThread } from '../../core/models/models';
 import { DashboardPage } from './dashboard-page';
 
-const tournament = (): Tournament =>
+const tournament = (over: Record<string, unknown> = {}): Tournament =>
   withMeta('t1', {
     title: 'Carrom Cup',
     game: 'Carrom',
@@ -29,6 +33,8 @@ const tournament = (): Tournament =>
     organizerName: 'Admin',
     createdAt: 0,
     updatedAt: 0,
+    locked: false,
+    ...over,
   });
 
 describe('DashboardPage', () => {
@@ -36,15 +42,53 @@ describe('DashboardPage', () => {
   const update = vi.fn();
   const get = vi.fn();
   const create = vi.fn();
+  const quota = vi.fn();
+  const getForgeState = vi.fn();
+  const removeMany = vi.fn();
+  const loadThreads = vi.fn();
+  const loadMine = vi.fn();
+  const markRead = vi.fn();
+  const reply = vi.fn();
+  const sendMessage = vi.fn();
+  const threads = signal<InboxThread[] | undefined>(undefined);
+  const myThread = signal<InboxThread | null | undefined>(undefined);
+  const unread = signal(0);
+  let current = tournament();
 
   beforeEach(() => {
+    current = tournament();
+    removeMany.mockReset().mockResolvedValue(1);
+    loadThreads.mockReset().mockResolvedValue(undefined);
+    loadMine.mockReset().mockResolvedValue(undefined);
+    markRead.mockReset().mockResolvedValue(undefined);
+    reply.mockReset().mockResolvedValue(true);
+    sendMessage.mockReset().mockResolvedValue(true);
+    threads.set([]);
+    myThread.set(null);
+    unread.set(0);
+    getForgeState.mockReset().mockResolvedValue(null);
+    quota.mockReset().mockResolvedValue({ limit: 0, used: 0, reached: false });
     update.mockReset().mockResolvedValue(tournament());
-    get.mockReset().mockResolvedValue(tournament());
+    get.mockReset().mockImplementation(() => Promise.resolve(current));
     create.mockReset().mockResolvedValue(tournament());
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
         { provide: FirestoreService, useValue: { db: {} } },
+        { provide: PEER_FACTORY, useValue: new FakePeerHub().factory },
+        {
+          provide: InboxService,
+          useValue: {
+            threads,
+            myThread,
+            unread,
+            loadThreads,
+            loadMine,
+            markRead,
+            reply,
+            send: sendMessage,
+          },
+        },
         {
           provide: AuthService,
           useValue: {
@@ -68,7 +112,15 @@ describe('DashboardPage', () => {
         },
         {
           provide: TournamentService,
-          useValue: { list: () => Promise.resolve([tournament()]), get, update, create },
+          useValue: {
+            list: () => Promise.resolve([current]),
+            get,
+            update,
+            create,
+            quota,
+            getForgeState,
+            removeMany,
+          },
         },
         {
           provide: OrganizerService,
@@ -103,7 +155,7 @@ describe('DashboardPage', () => {
     expect(root.textContent).toContain('Carrom Cup');
     expect(root.textContent).toContain('co-managed by Bella');
     expect(root.textContent).toContain('hosted by Admin');
-    expect(root.querySelectorAll('tf-tabs button').length).toBe(3);
+    expect(root.querySelectorAll('tf-tabs button').length).toBe(4);
     expect(root.textContent).toContain('@bella');
   });
 
@@ -220,5 +272,306 @@ describe('DashboardPage', () => {
     const row = (title: string) => rows.find((r) => r.textContent?.includes(title))!;
     expect(row('Live Cup').textContent).toContain('Current matches');
     expect(row('Done Cup').textContent).not.toContain('Current matches');
+  });
+
+  const asOrganizer = () =>
+    TestBed.overrideProvider(AuthService, {
+      useValue: {
+        session: signal<Session | null>({ role: 'organizer', id: 'o2', displayName: 'Bella' }),
+        isAdmin: signal(false),
+        canViewOrganizers: signal(false),
+        openLogin: vi.fn(),
+      },
+    });
+
+  const button = (root: HTMLElement, needle: string) =>
+    Array.from(root.querySelectorAll('button')).find((b) => b.textContent?.includes(needle)) as
+      HTMLButtonElement | undefined;
+
+  it('locks a published tournament for organizers: results only, no delete', async () => {
+    current = tournament({ locked: true });
+    asOrganizer();
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+
+    expect(root.textContent).toContain('🔒 Published');
+    expect(button(root, 'Delete')?.disabled).toBe(true);
+    expect(button(root, 'Clear data')).toBeUndefined();
+    expect(button(root, 'Edit')).toBeUndefined();
+    button(root, 'Results')?.click();
+    await settle(fixture);
+
+    expect(root.querySelector('tf-tournament-form')?.textContent).toContain('published and locked');
+    expect(root.querySelector('tf-tournament-form fieldset')?.hasAttribute('disabled')).toBe(true);
+    (root.querySelector('#tf_winner1') as HTMLInputElement).value = 'NewChamp';
+    (root.querySelector('#tf_winner1') as HTMLInputElement).dispatchEvent(new Event('input'));
+    (root.querySelector('tf-tournament-form form') as HTMLFormElement).dispatchEvent(
+      new Event('submit'),
+    );
+    await settle(fixture);
+
+    expect(root.querySelector('tf-publish-confirm-modal [role="dialog"]')).toBeNull();
+    const payload = update.mock.calls[0][1];
+    expect(Object.keys(payload).sort()).toEqual(['closingMessage', 'winners']);
+    expect(payload.winners[0].name).toBe('NewChamp');
+  });
+
+  it('asks organizers to confirm before publishing, then locks again', async () => {
+    asOrganizer();
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+
+    expect(root.textContent).toContain('🔓 Editing allowed');
+    button(root, 'Edit')?.click();
+    await settle(fixture);
+    (root.querySelector('tf-tournament-form form') as HTMLFormElement).dispatchEvent(
+      new Event('submit'),
+    );
+    await settle(fixture);
+
+    const dialog = root.querySelector('tf-publish-confirm-modal [role="dialog"]');
+    expect(update).not.toHaveBeenCalled();
+    expect(dialog?.textContent).toContain('cannot be edited or deleted');
+    expect(dialog?.textContent).toContain('Speedy40');
+
+    button(root, 'Go back')?.click();
+    await settle(fixture);
+    expect(update).not.toHaveBeenCalled();
+
+    (root.querySelector('tf-tournament-form form') as HTMLFormElement).dispatchEvent(
+      new Event('submit'),
+    );
+    await settle(fixture);
+    button(root, 'Yes, publish')?.click();
+    await settle(fixture);
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(update.mock.calls[0][1]).toMatchObject({ title: 'Carrom Cup', locked: true });
+  });
+
+  it('lets an admin unlock and lock a tournament', async () => {
+    current = tournament({ locked: true });
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+
+    expect(button(root, 'Delete')?.disabled).toBe(false);
+    expect(button(root, 'Clear data')).toBeDefined();
+    button(root, 'Allow editing')?.click();
+    await settle(fixture);
+    expect(update).toHaveBeenCalledWith('t1', { locked: false }, expect.anything());
+  });
+
+  it('stops an organizer at their tournament limit', async () => {
+    quota.mockResolvedValue({ limit: 1, used: 1, reached: true });
+    asOrganizer();
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+
+    expect(root.querySelector('tf-tournament-form')?.textContent).toContain(
+      'created 1 of 1 allowed tournaments',
+    );
+    const publish = root.querySelector('tf-tournament-form button[type="submit"]');
+    expect((publish as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('shows the tournaments tab after switching from admin to an organizer', async () => {
+    const sessionSignal = signal<Session | null>(session);
+    const isAdmin = signal(true);
+    const canView = signal(true);
+    TestBed.overrideProvider(AuthService, {
+      useValue: {
+        session: sessionSignal,
+        isAdmin,
+        canViewOrganizers: canView,
+        openLogin: vi.fn(),
+      },
+    });
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+
+    (root.querySelectorAll('tf-tabs button')[2] as HTMLElement).click();
+    await settle(fixture);
+    expect(root.querySelector('tf-usage-panel')?.closest('section')?.hidden).toBe(false);
+
+    isAdmin.set(false);
+    canView.set(false);
+    sessionSignal.set({ role: 'organizer', id: 'o2', displayName: 'Bella' });
+    await settle(fixture);
+
+    expect(root.querySelector('tf-tournament-form')?.closest('section')?.hidden).toBe(false);
+    expect(root.querySelectorAll('tf-tabs button').length).toBe(2);
+  });
+
+  const finishedBracket = {
+    members: ['Alice', 'Bob'],
+    bracket: {
+      thirdPlaceEnabled: false,
+      stages: [
+        {
+          label: 'Final Match',
+          isThirdPlace: false,
+          matches: [{ p1Name: 'Alice', p2Name: 'Bob', winnerName: 'Alice' }],
+        },
+      ],
+    },
+  };
+
+  it('keeps winners locked until the bracket has a winner, then offers to pull them', async () => {
+    current = tournament({ winners: [], announcement: '🥇 1st — 20 Pips\n🥈 2nd — 10 Pips' });
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+
+    button(root, 'Edit')?.click();
+    await settle(fixture);
+    const winners = () => root.querySelector('fieldset:has(#tf_winner1)');
+    expect(winners()?.hasAttribute('disabled')).toBe(true);
+    expect(root.textContent).toContain('Winners unlock once the Match Bracket is complete');
+    expect(button(root, 'Pull winners')).toBeUndefined();
+
+    current = tournament({
+      winners: [],
+      announcement: '🥇 1st — 20 Pips\n🥈 2nd — 10 Pips',
+      forgeState: finishedBracket,
+    });
+    getForgeState.mockResolvedValue(finishedBracket);
+    button(root, 'Cancel edit')?.click();
+    await settle(fixture);
+    button(root, 'Edit')?.click();
+    await settle(fixture);
+
+    expect(winners()?.hasAttribute('disabled')).toBe(false);
+    button(root, 'Pull winners')?.click();
+    await settle(fixture);
+    const value = (id: string) => (root.querySelector('#' + id) as HTMLInputElement).value;
+    expect(value('tf_winner1')).toBe('@Alice');
+    expect(value('tf_winner2')).toBe('@Bob');
+    expect(value('tf_prize1')).toBe('20 Pips');
+    expect(value('tf_prize2')).toBe('10 Pips');
+  });
+
+  it('refreshes the list when the organizer returns to the tab so an unlock shows up', async () => {
+    current = tournament({ locked: true });
+    const list = vi.fn().mockImplementation(() => Promise.resolve([current]));
+    TestBed.overrideProvider(TournamentService, {
+      useValue: { list, get, update, create, quota, getForgeState, removeMany },
+    });
+    asOrganizer();
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+    expect(button(root, 'Results')).toBeDefined();
+    expect(button(root, 'Edit')).toBeUndefined();
+
+    current = tournament({ locked: false });
+    const now = Date.now();
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(now + 60_000);
+    window.dispatchEvent(new Event('focus'));
+    await settle(fixture);
+    clock.mockRestore();
+
+    expect(list).toHaveBeenCalledTimes(2);
+    expect(button(root, 'Edit')).toBeDefined();
+    expect(button(root, 'Results')).toBeUndefined();
+  });
+
+  it('lets an admin delete selected tournaments completely from the Usage tab', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+    (root.querySelectorAll('tf-tabs button')[2] as HTMLElement).click();
+    await settle(fixture);
+
+    const remove = () => button(root, 'Delete selected tournaments completely');
+    expect(remove()?.disabled).toBe(true);
+    (root.querySelector('tf-usage-panel tf-checkbox input') as HTMLInputElement).click();
+    await settle(fixture);
+    expect(remove()?.disabled).toBe(false);
+    remove()?.click();
+    await settle(fixture);
+
+    expect(confirmSpy.mock.calls[0][0]).toContain('Carrom Cup');
+    expect(removeMany).toHaveBeenCalledWith(['t1'], expect.anything());
+    confirmSpy.mockRestore();
+  });
+
+  it('shows admins live chat requests and organizer messages in the Notifications tab', async () => {
+    threads.set([
+      {
+        organizerId: 'o2',
+        organizerName: 'Bella',
+        adminUnread: true,
+        organizerUnread: false,
+        updatedAt: 2,
+        messages: [{ id: 'm1', from: 'organizer', text: 'Please unlock my tournament', at: 1 }],
+      },
+    ]);
+    unread.set(1);
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+
+    const tabs = Array.from(root.querySelectorAll('tf-tabs button'));
+    const notifications = tabs.find((b) => b.textContent?.includes('Notifications'));
+    expect(notifications?.textContent).toContain('1');
+    expect(tabs.some((b) => b.textContent?.includes('Messages'))).toBe(false);
+    (notifications as HTMLElement).click();
+    await settle(fixture);
+
+    expect(loadThreads).toHaveBeenCalled();
+    const panel = root.querySelector('tf-notifications-panel') as HTMLElement;
+    expect(panel.textContent).toContain('No live chat requests right now.');
+    button(panel, 'Bella')?.click();
+    await settle(fixture);
+    expect(markRead).toHaveBeenCalledWith('o2');
+    expect(panel.textContent).toContain('Please unlock my tournament');
+
+    const box = panel.querySelector('tf-chat-thread textarea') as HTMLTextAreaElement;
+    box.value = 'Done, it is unlocked';
+    box.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    button(panel, 'Send')?.click();
+    await settle(fixture);
+    expect(reply).toHaveBeenCalledWith('o2', 'Done, it is unlocked');
+  });
+
+  it('lets an organizer message the admin from the Messages tab', async () => {
+    myThread.set({
+      organizerId: 'o2',
+      organizerName: 'Bella',
+      adminUnread: false,
+      organizerUnread: true,
+      updatedAt: 2,
+      messages: [{ id: 'm1', from: 'admin', text: 'Unlocked for you', at: 1 }],
+    });
+    unread.set(1);
+    asOrganizer();
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+
+    const tabs = Array.from(root.querySelectorAll('tf-tabs button'));
+    expect(tabs.some((b) => b.textContent?.includes('Notifications'))).toBe(false);
+    const messages = tabs.find((b) => b.textContent?.includes('Messages')) as HTMLElement;
+    expect(messages.textContent).toContain('1');
+    messages.click();
+    await settle(fixture);
+
+    expect(loadMine).toHaveBeenCalled();
+    expect(markRead).toHaveBeenCalled();
+    const panel = root.querySelector('tf-support-messages') as HTMLElement;
+    expect(panel.textContent).toContain('Unlocked for you');
+    const box = panel.querySelector('tf-chat-thread textarea') as HTMLTextAreaElement;
+    box.value = 'Thanks!';
+    box.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    button(panel, 'Send')?.click();
+    await settle(fixture);
+    expect(sendMessage).toHaveBeenCalledWith('Thanks!');
   });
 });

@@ -27,8 +27,10 @@ import {
   capacityFor,
   computeStatus,
   findDuplicateRegistration,
+  parsePrizes,
   podiumRows,
   usesFreeRounds,
+  withPrizes,
   visibleOrganizers,
   withMeta,
 } from './tournament';
@@ -698,5 +700,40 @@ describe('free-for-all rounds', () => {
     expect(usesFreeRounds({ game: 'Bingo + Ocho', mixed: [entry, entry] })).toBe(true);
     expect(usesFreeRounds({ game: 'Chess', mixed: [] })).toBe(false);
     expect(usesFreeRounds({ game: 'Bingo', mixed: [] })).toBe(true);
+  });
+
+  it('reads prizes per place from the announcement text', () => {
+    const text = [
+      '🏆 PRIZES',
+      '🥇 1st — 20 Pips',
+      '🥈 2nd — 10 Pips',
+      '🥇 1st Prize: 4K Coins 💰',
+      '💰 1st: 300 pips 👑',
+      '🥉 3rd Place: 1K',
+      'Winner takes it all',
+    ].join('\n');
+    expect([...parsePrizes(text)]).toEqual([
+      [1, '20 Pips'],
+      [2, '10 Pips'],
+      [3, '1K'],
+    ]);
+    expect([...parsePrizes('🥇 1st Prize: 4K Coins 💰\n💰 1st: 300 pips 👑')]).toEqual([
+      [1, '4K Coins'],
+    ]);
+    expect(
+      withPrizes(
+        [
+          { place: 1, name: 'A' },
+          { place: 2, name: 'B', prize: 'Gold' },
+        ],
+        {
+          announcement: text,
+          details: '',
+        },
+      ),
+    ).toEqual([
+      { place: 1, name: 'A', prize: '20 Pips' },
+      { place: 2, name: 'B', prize: 'Gold' },
+    ]);
   });
 });

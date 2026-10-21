@@ -39,6 +39,9 @@ import { Modal } from '../../shared/ui/modal';
         <tf-checkbox formControlName="canManageOrganizers"
           >Allow this organizer to add more organizers</tf-checkbox
         >
+        <tf-field label="Tournament limit" hint="(0 means unlimited)" for="editOrgLimit">
+          <tf-input inputId="editOrgLimit" type="number" formControlName="maxTournaments" />
+        </tf-field>
         @if (error()) {
           <p class="field-note error">{{ error() }}</p>
         }
@@ -60,6 +63,7 @@ export class OrganizerEditModal {
     displayName: '',
     username: '',
     canManageOrganizers: false,
+    maxTournaments: '0',
   });
   protected readonly error = signal('');
 
@@ -73,6 +77,7 @@ export class OrganizerEditModal {
           displayName: org.displayName,
           username: org.username,
           canManageOrganizers: !!org.canManageOrganizers,
+          maxTournaments: String(org.maxTournaments ?? 0),
         });
       });
     });
@@ -95,7 +100,11 @@ export class OrganizerEditModal {
       this.error.set('That username is already taken.');
       return;
     }
-    await this.organizerService.update(org.id, { ...value, username });
+    await this.organizerService.update(org.id, {
+      ...value,
+      username,
+      maxTournaments: Number(value.maxTournaments) || 0,
+    });
     this.organizer.set(null);
     this.saved.emit();
     this.toast.show('Organizer updated.');

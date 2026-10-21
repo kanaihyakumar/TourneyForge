@@ -2,14 +2,18 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
   resource,
   signal,
+  untracked,
 } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { Tournament } from '../../core/models/models';
 import { AuthService } from '../../core/services/auth.service';
+import { InboxService } from '../../core/services/inbox.service';
+import { LiveChatService } from '../../core/services/live-chat.service';
 import { OrganizerService } from '../../core/services/organizer.service';
 import { TournamentService } from '../../core/services/tournament.service';
 import { AccountActions } from '../../layout/account-actions';
@@ -20,6 +24,8 @@ import { TabItem, Tabs } from '../../shared/ui/tabs';
 import { visibleOrganizers } from '../../core/utils/tournament';
 import { UsageService } from '../../core/services/usage.service';
 import { ClearDataModal } from './clear-data-modal';
+import { NotificationsPanel } from './notifications-panel';
+import { SupportMessages } from './support-messages';
 import { UsagePanel } from './usage-panel';
 import { MessagesModal } from '../../shared/tournament/messages-modal';
 import { MatchesModal } from '../../shared/tournament/matches-modal';
@@ -27,6 +33,8 @@ import { OrganizersPanel } from './organizers-panel';
 import { ParticipantsListModal } from './participants-modal';
 import { TournamentForm } from './tournament-form';
 import { TournamentList } from './tournament-list';
+
+const REFRESH_GAP_MS = 15000;
 
 @Component({
   selector: 'tf-dashboard-page',
@@ -44,6 +52,8 @@ import { TournamentList } from './tournament-list';
     MessagesModal,
     ClearDataModal,
     UsagePanel,
+    NotificationsPanel,
+    SupportMessages,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './dashboard-page.html',
@@ -51,9 +61,13 @@ import { TournamentList } from './tournament-list';
 export class DashboardPage {
   private readonly tournamentService = inject(TournamentService);
   private readonly organizerService = inject(OrganizerService);
+  private readonly live = inject(LiveChatService);
+  private readonly inbox = inject(InboxService);
   protected readonly auth = inject(AuthService);
 
-  protected readonly activeTab = signal('tournaments');
+  protected readonly activeTab = signal(
+    inject(ActivatedRoute).snapshot.queryParamMap.get('tab') ?? 'tournaments',
+  );
   protected readonly editing = signal<Tournament | null>(null);
   protected readonly participantsId = signal<string | null>(
     inject(ActivatedRoute).snapshot.queryParamMap.get('tournament'),
@@ -91,12 +105,46 @@ export class DashboardPage {
       { id: 'tournaments', label: '🏆 Tournaments' },
       { id: 'organizers', label: '🧑‍💼 Organizers', hidden: !this.auth.canViewOrganizers() },
       { id: 'usage', label: '📊 Usage', hidden: !this.auth.isAdmin() },
+      {
+        id: 'notifications',
+        label: '🔔 Notifications',
+        hidden: !this.auth.isAdmin(),
+        badge: this.live.attention() + this.inbox.unread(),
+      },
+      {
+        id: 'messages',
+        label: '💬 Messages',
+        hidden: this.auth.isAdmin(),
+        badge: this.inbox.unread(),
+      },
     ];
   }
 
   constructor() {
+    let lastRefresh = Date.now();
+    const refresh = () => {
+      if (document.visibilityState !== 'visible' || Date.now() - lastRefresh < REFRESH_GAP_MS) {
+        return;
+      }
+      lastRefresh = Date.now();
+      if (this.auth.session() && !this.editing()) this.tournaments.reload();
+    };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    inject(DestroyRef).onDestroy(() => {
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    });
     effect(() => {
       if (!this.auth.session()) this.auth.openLogin();
+    });
+    effect(() => {
+      const available = this.tabs().some((tab) => tab.id === this.activeTab() && !tab.hidden);
+      if (!available) this.activeTab.set('tournaments');
+    });
+    effect(() => {
+      void this.auth.session()?.id;
+      untracked(() => this.editing.set(null));
     });
   }
 

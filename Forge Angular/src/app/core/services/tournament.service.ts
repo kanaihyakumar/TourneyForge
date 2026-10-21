@@ -1,6 +1,6 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { collection, doc, query, where } from 'firebase/firestore';
-import { STORAGE_KEYS } from '../config/constants';
+import { LOCK_EXEMPT_FIELDS, STORAGE_KEYS } from '../config/constants';
 import {
   BulkAddResult,
   ClearOptions,
@@ -47,7 +47,16 @@ const UPDATABLE_FIELDS = [
   'createdTZ',
   'cancelled',
   'completed',
+  'locked',
 ] as const;
+
+export class TournamentLimitError extends Error {}
+
+export interface TournamentQuota {
+  limit: number;
+  used: number;
+  reached: boolean;
+}
 
 const normalizeTeamSize = (value: unknown): 1 | 2 => (parseInt(String(value), 10) === 2 ? 2 : 1);
 const normalizePlayersPerMatch = (value: unknown): number =>
@@ -92,8 +101,24 @@ export class TournamentService {
     return snap.exists() ? withMeta(snap.id, snap.data() as TournamentData) : null;
   }
 
+  async quota(session: Session | null): Promise<TournamentQuota> {
+    if (!session || session.role !== 'organizer') return { limit: 0, used: 0, reached: false };
+    const [organizer, owned] = await Promise.all([
+      this.firestore.getDoc(doc(this.firestore.db, 'organizers', session.id)),
+      this.firestore.getDocs(
+        query(collection(this.firestore.db, 'tournaments'), where('organizerId', '==', session.id)),
+      ),
+    ]);
+    const limit = Number(organizer.exists() ? organizer.data()['maxTournaments'] : 0) || 0;
+    const used = owned.docs.length;
+    return { limit, used, reached: limit > 0 && used >= limit };
+  }
+
   async create(input: TournamentInput, session: Session | null): Promise<Tournament | null> {
     if (!session) return null;
+    if ((await this.quota(session)).reached) {
+      throw new TournamentLimitError('Tournament limit reached.');
+    }
     const now = Date.now();
     const payload: TournamentData = {
       title: input.title.trim(),
@@ -122,6 +147,7 @@ export class TournamentService {
       registrations: [],
       cancelled: false,
       completed: false,
+      locked: true,
       createdAt: now,
       updatedAt: now,
     };
@@ -139,6 +165,17 @@ export class TournamentService {
     if (!snap.exists()) return null;
     const existing = snap.data() as TournamentData;
     if (!canManage(session, existing)) return null;
+    if (session?.role !== 'admin') {
+      const touched = Object.keys(input).filter(
+        (key) => (input as Record<string, unknown>)[key] !== undefined,
+      );
+      if (
+        input.locked === false ||
+        (existing.locked !== false && touched.some((key) => !LOCK_EXEMPT_FIELDS.includes(key)))
+      ) {
+        return null;
+      }
+    }
 
     const updates: Partial<TournamentData> = {};
     const writable = updates as Record<string, unknown>;
@@ -173,7 +210,10 @@ export class TournamentService {
   async remove(id: string, session: Session | null): Promise<boolean> {
     const ref = this.ref(id);
     const snap = await this.firestore.getDoc(ref);
-    if (!snap.exists() || !canManage(session, snap.data() as TournamentData)) return false;
+    if (!snap.exists()) return false;
+    const data = snap.data() as TournamentData;
+    if (!canManage(session, data)) return false;
+    if (session?.role !== 'admin' && data.locked !== false) return false;
     await this.firestore.deleteDoc(ref);
     return true;
   }
@@ -395,6 +435,7 @@ export class TournamentService {
   }
 
   async clearData(id: string, options: ClearOptions, session: Session | null): Promise<boolean> {
+    if (session?.role !== 'admin') return false;
     const ref = this.ref(id);
     const snap = await this.firestore.getDoc(ref);
     if (!snap.exists() || !canManage(session, snap.data() as TournamentData)) return false;
@@ -413,6 +454,12 @@ export class TournamentService {
 
   async clearMany(ids: string[], options: ClearOptions, session: Session | null): Promise<number> {
     const results = await Promise.all(ids.map((id) => this.clearData(id, options, session)));
+    return results.filter(Boolean).length;
+  }
+
+  async removeMany(ids: string[], session: Session | null): Promise<number> {
+    if (session?.role !== 'admin') return 0;
+    const results = await Promise.all(ids.map((id) => this.remove(id, session)));
     return results.filter(Boolean).length;
   }
 

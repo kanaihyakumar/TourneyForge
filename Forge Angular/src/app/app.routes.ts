@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { LEGAL_DOCS } from './core/config/legal';
 
 export const routes: Routes = [
   {
@@ -16,6 +17,12 @@ export const routes: Routes = [
     title: 'TourneyForge - Match Bracket',
     loadComponent: () => import('./features/forge/forge-page').then((m) => m.ForgePage),
   },
+  ...LEGAL_DOCS.map((doc) => ({
+    path: doc.id,
+    title: `TourneyForge - ${doc.title}`,
+    data: { doc: doc.id },
+    loadComponent: () => import('./features/legal/legal-page').then((m) => m.LegalPage),
+  })),
   {
     path: '**',
     title: 'Page Not Found',

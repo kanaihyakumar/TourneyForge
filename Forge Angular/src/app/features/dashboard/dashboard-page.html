@@ -46,6 +46,16 @@
   }
 
   @if (auth.isAdmin()) {
+    <section [hidden]="activeTab() !== 'notifications'">
+      <tf-notifications-panel [active]="activeTab() === 'notifications'" />
+    </section>
+  } @else {
+    <section [hidden]="activeTab() !== 'messages'">
+      <tf-support-messages [active]="activeTab() === 'messages'" />
+    </section>
+  }
+
+  @if (auth.isAdmin()) {
     <section [hidden]="activeTab() !== 'usage'">
       <tf-usage-panel
         [tournamentList]="tournaments.value() ?? []"

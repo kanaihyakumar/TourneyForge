@@ -125,7 +125,8 @@ export class ForgePage {
 
   protected copyResults(): void {
     const lines = podiumRows(this.store.winners()).map(
-      (r) => `${r.medal} ${r.label}: ${formatPlatoId(r.name)}${r.detail ? ` (${r.detail})` : ''}`,
+      (r) =>
+        `${r.medal} ${r.label}: ${formatPlatoId(r.name)}${r.detail ? ` (${r.detail})` : ''}${r.prize ? ` - 🎁 ${r.prize}` : ''}`,
     );
     this.clipboard.copy(['🎉 Tournament Results', ...lines].join('\n'), undefined, 'accent');
   }

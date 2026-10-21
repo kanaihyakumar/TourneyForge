@@ -7,7 +7,8 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "deploy": "ng build && cd .. && firebase deploy --only hosting"
+    "deploy": "ng build && cd .. && firebase deploy --only hosting",
+    "deploy:rules": "cd .. && firebase deploy --only firestore:rules"
   },
   "private": true,
   "packageManager": "npm@11.9.0",
@@ -19,6 +20,7 @@
     "@angular/platform-browser": "^22.2.0",
     "@angular/router": "^22.2.0",
     "firebase": "^13.0.0",
+    "peerjs": "^1.5.5",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },

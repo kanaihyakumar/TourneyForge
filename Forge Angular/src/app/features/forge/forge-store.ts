@@ -37,6 +37,7 @@ import {
   registrationLabel,
   usesFreeRounds,
   winnersFromPodium,
+  withPrizes,
 } from '../../core/utils/tournament';
 
 @Injectable()
@@ -144,7 +145,7 @@ export class ForgeStore {
       .filter((r) => r.games > 0 || r.pro > 0 || r.nab > 0)
       .slice(0, this.winnerPlaces()),
   );
-  readonly winners = computed(() => {
+  private readonly rankedWinners = computed(() => {
     if (this.scoring() && this.pointsStandings().length) {
       return this.pointsStandings().map((r, i) => ({
         place: i + 1,
@@ -154,6 +155,10 @@ export class ForgeStore {
     }
     const podium = this.podium();
     return podium ? winnersFromPodium(podium) : [];
+  });
+  readonly winners = computed(() => {
+    const tournament = this.tournament();
+    return tournament ? withPrizes(this.rankedWinners(), tournament) : this.rankedWinners();
   });
   readonly lastStage = computed(() => this.stages().at(-1) ?? null);
   readonly lastStageComplete = computed(() => {

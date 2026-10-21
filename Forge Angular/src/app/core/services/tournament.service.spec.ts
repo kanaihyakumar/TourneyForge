@@ -1,11 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import * as firestore from 'firebase/firestore';
 import { FirestoreService } from './firestore.service';
-import { TournamentService } from './tournament.service';
+import { TournamentLimitError, TournamentService } from './tournament.service';
 
 const store = vi.hoisted(() => ({
   data: {} as Record<string, unknown>,
   updates: [] as Record<string, unknown>[],
+  owned: 0,
 }));
 
 vi.mock('firebase/firestore', () => ({
@@ -13,14 +14,17 @@ vi.mock('firebase/firestore', () => ({
   collection: () => ({}),
   query: () => ({}),
   where: () => ({}),
-  getDocs: () => Promise.resolve({ docs: [] }),
+  getDocs: () => Promise.resolve({ docs: Array.from({ length: store.owned }) }),
   getDoc: () => Promise.resolve({ exists: () => true, id: 't1', data: () => store.data }),
   updateDoc: (_ref: unknown, patch: Record<string, unknown>) => {
     store.updates.push(patch);
     return Promise.resolve();
   },
   addDoc: () => Promise.resolve({ id: 'new' }),
-  deleteDoc: () => Promise.resolve(),
+  deleteDoc: () => {
+    store.updates.push({ deleted: true });
+    return Promise.resolve();
+  },
   deleteField: () => '__deleted__',
 }));
 
@@ -30,6 +34,7 @@ describe('TournamentService.replaceParticipant', () => {
 
   beforeEach(() => {
     store.updates.length = 0;
+    store.owned = 0;
     store.data = {
       teamSize: 2,
       slots: 8,
@@ -62,6 +67,8 @@ describe('TournamentService.replaceParticipant', () => {
             getDoc: (ref: any) => firestore.getDoc(ref),
             getDocs: (q: any) => firestore.getDocs(q),
             updateDoc: (ref: any, patch: any) => firestore.updateDoc(ref, patch),
+            addDoc: (ref: any, data: any) => firestore.addDoc(ref, data),
+            deleteDoc: (ref: any) => firestore.deleteDoc(ref),
           },
         },
       ],
@@ -174,5 +181,93 @@ describe('TournamentService.replaceParticipant', () => {
     expect(denied.ok).toBe(false);
     expect(denied.message).toContain('Only an admin');
     expect(store.updates.length).toBe(1);
+  });
+
+  const organizer = { role: 'organizer' as const, id: 'o1', displayName: 'Bella' };
+
+  it('lets organizers change only results on a locked tournament', async () => {
+    store.data['locked'] = true;
+    expect(await service.update('t1', { title: 'New' }, organizer)).toBeNull();
+    expect(
+      await service.update('t1', { winners: [], closingMessage: 'GG' }, organizer),
+    ).not.toBeNull();
+    expect(await service.update('t1', { completed: true }, organizer)).not.toBeNull();
+    expect(await service.update('t1', { locked: false }, organizer)).toBeNull();
+    expect(store.updates.length).toBe(2);
+    expect(await service.update('t1', { locked: false, title: 'Edit' }, admin)).not.toBeNull();
+  });
+
+  it('only lets an admin delete or unlock, and relocks when an organizer republishes', async () => {
+    store.data['locked'] = true;
+    expect(await service.remove('t1', organizer)).toBe(false);
+    expect(await service.remove('t1', admin)).toBe(true);
+
+    store.data['locked'] = false;
+    const edited = await service.update('t1', { title: 'Edit', locked: true }, organizer);
+    expect(edited?.locked).toBe(true);
+    expect(await service.remove('t1', organizer)).toBe(true);
+  });
+
+  it('enforces the tournament limit set for an organizer', async () => {
+    store.data['maxTournaments'] = 1;
+    store.owned = 1;
+    expect((await service.quota(organizer)).reached).toBe(true);
+    await expect(
+      service.create(
+        {
+          title: 'T',
+          game: 'Carrom',
+          slots: 8,
+          teamSize: 1,
+          announcement: '',
+          details: '',
+          sponsor: '',
+          closingMessage: '',
+          winners: [],
+          hosts: [],
+          startUTC: 1,
+          createdTZ: 'UTC',
+        },
+        organizer,
+      ),
+    ).rejects.toBeInstanceOf(TournamentLimitError);
+
+    store.data['maxTournaments'] = 0;
+    expect((await service.quota(organizer)).reached).toBe(false);
+    expect((await service.quota(admin)).reached).toBe(false);
+  });
+
+  it('does not let organizers clear tournament data', async () => {
+    expect(
+      await service.clearData(
+        't1',
+        {
+          registrations: true,
+          forgeState: false,
+          winners: false,
+          closingMessage: false,
+          details: false,
+        },
+        organizer,
+      ),
+    ).toBe(false);
+    expect(store.updates.length).toBe(0);
+  });
+
+  it('keeps a tournament unlocked until the organizer publishes it again', async () => {
+    store.data['locked'] = false;
+    await service.update('t1', { winners: [], closingMessage: 'GG' }, organizer);
+    await service.update('t1', { completed: true }, organizer);
+    await service.update('t1', { title: 'Edit', announcement: 'More' }, organizer);
+    expect(store.updates.every((patch) => !('locked' in patch))).toBe(true);
+    await service.update('t1', { title: 'Edit', locked: true }, organizer);
+    expect(store.updates.at(-1)?.['locked']).toBe(true);
+  });
+
+  it('deletes several tournaments completely for an admin only', async () => {
+    expect(await service.removeMany(['t1', 't2'], organizer)).toBe(0);
+    expect(store.updates.length).toBe(0);
+    expect(await service.removeMany(['t1', 't2'], admin)).toBe(2);
+    expect(store.updates.filter((patch) => patch['deleted']).length).toBe(2);
   });
 });

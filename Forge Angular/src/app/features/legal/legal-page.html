@@ -1,0 +1,24 @@
+<tf-page-header subtitle="Tournaments, groups & bragging rights - all in one arena." />
+
+<tf-card [icon]="doc().icon" [title]="doc().title" [hint]="doc().hint">
+  <article class="legal">
+    @for (section of doc().sections; track section.heading) {
+      <section>
+        <h3>{{ section.heading }}</h3>
+        @for (text of section.paragraphs; track $index) {
+          <p>{{ text }}</p>
+        }
+        @if (section.bullets?.length) {
+          <ul>
+            @for (item of section.bullets; track $index) {
+              <li>{{ item }}</li>
+            }
+          </ul>
+        }
+      </section>
+    }
+  </article>
+  <div class="btn-row">
+    <a tfButton variant="primary" routerLink="/">🏠 Back to Home</a>
+  </div>
+</tf-card>

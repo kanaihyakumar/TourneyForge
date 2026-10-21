@@ -19,6 +19,7 @@ import { PillButton } from '../../shared/ui/pill-button';
 import { MatchesModal } from '../../shared/tournament/matches-modal';
 import { HowItWorks } from './how-it-works';
 import { TourCard } from './tour-card';
+import { WinnersMarquee } from './winners-marquee';
 import { TournamentDetailModal } from './tournament-detail-modal';
 
 @Component({
@@ -31,6 +32,7 @@ import { TournamentDetailModal } from './tournament-detail-modal';
     ContactLine,
     PillButton,
     TourCard,
+    WinnersMarquee,
     HowItWorks,
     MatchesModal,
     TournamentDetailModal,
@@ -47,7 +49,7 @@ export class HomePage {
   protected readonly detailId = signal<string | null>(null);
   protected readonly focusRegister = signal(false);
   protected readonly matchesId = signal<string | null>(null);
-  protected readonly showCompleted = signal(false);
+  protected readonly showCompleted = signal(true);
 
   protected readonly liveUpcoming = computed(() =>
     (this.tournaments.value() ?? []).filter(
@@ -55,9 +57,9 @@ export class HomePage {
     ),
   );
   protected readonly completed = computed(() =>
-    (this.tournaments.value() ?? []).filter(
-      (t) => t.status === 'completed' || t.status === 'cancelled',
-    ),
+    (this.tournaments.value() ?? [])
+      .filter((t) => t.status === 'completed' || t.status === 'cancelled')
+      .sort((a, b) => b.startUTC - a.startUTC),
   );
   protected readonly toggleLabel = computed(
     () =>

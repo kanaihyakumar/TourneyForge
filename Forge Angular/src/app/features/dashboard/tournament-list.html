@@ -12,6 +12,11 @@
       <tf-list-row>
         <ng-container ngProjectAs="[rowTitle]">
           <tf-status-badge [status]="t.status" short /> {{ t.title }}
+          @if (t.locked) {
+            <tf-tag>🔒 Published</tf-tag>
+          } @else {
+            <tf-tag>🔓 Editing allowed</tf-tag>
+          }
         </ng-container>
         <ng-container ngProjectAs="[rowSub]">
           {{ t.game }}{{ t.teamSize === 2 ? ' (2v2)' : '' }} · {{ whenText(t) }} ·
@@ -47,11 +52,34 @@
           <button type="button" tfButton size="sm" (click)="viewMessages.emit(t.id)">
             💬 Messages
           </button>
-          <button type="button" tfButton size="sm" (click)="clearData.emit(t.id)">
-            🧹 Clear data
+          @if (auth.isAdmin()) {
+            <button type="button" tfButton size="sm" (click)="clearData.emit(t.id)">
+              🧹 Clear data
+            </button>
+          }
+          <button type="button" tfButton size="sm" (click)="edit.emit(t.id)">
+            {{ isLockedFor(t) ? '🏅 Results' : '✏️ Edit' }}
           </button>
-          <button type="button" tfButton size="sm" (click)="edit.emit(t.id)">✏️ Edit</button>
-          <button type="button" tfButton variant="danger" size="sm" (click)="remove(t.id)">
+          @if (auth.isAdmin()) {
+            <button
+              type="button"
+              tfButton
+              size="sm"
+              [disabled]="busyId() === t.id"
+              (click)="toggleLock(t)"
+            >
+              {{ t.locked ? '🔓 Allow editing' : '🔒 Lock' }}
+            </button>
+          }
+          <button
+            type="button"
+            tfButton
+            variant="danger"
+            size="sm"
+            [disabled]="isLockedFor(t)"
+            [attr.title]="isLockedFor(t) ? lockedNotice : null"
+            (click)="remove(t)"
+          >
             🗑️ Delete
           </button>
         </ng-container>

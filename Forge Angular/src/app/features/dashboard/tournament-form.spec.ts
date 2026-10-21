@@ -114,6 +114,7 @@ describe('TournamentForm game options', () => {
       },
     });
     expect(Object.keys(input.gameSettings)).toEqual(['All random roles', 'Language']);
+    expect(input.winners).toEqual([]);
   });
 
   it('labels count formats as players and starts Bingo and Bounce with one full game', async () => {

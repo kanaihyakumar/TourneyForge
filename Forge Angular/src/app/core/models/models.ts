@@ -23,6 +23,7 @@ export interface Winner {
   place: number;
   name: string;
   detail?: string;
+  prize?: string;
 }
 
 export interface Registration {
@@ -119,6 +120,7 @@ export interface PodiumRow {
   label: string;
   name: string;
   detail?: string;
+  prize?: string;
 }
 
 export interface TournamentInput {
@@ -148,6 +150,7 @@ export interface TournamentInput {
 export interface TournamentUpdate extends Partial<TournamentInput> {
   cancelled?: boolean;
   completed?: boolean;
+  locked?: boolean;
 }
 
 export interface TournamentData {
@@ -177,6 +180,7 @@ export interface TournamentData {
   registrations?: Registration[];
   cancelled?: boolean;
   completed?: boolean;
+  locked?: boolean;
   createdAt: number;
   updatedAt: number;
   forgeState?: ForgeState;
@@ -193,6 +197,7 @@ export interface Tournament extends TournamentData {
   closingMessage: string;
   completed: boolean;
   cancelled: boolean;
+  locked: boolean;
   teamSize: TeamSize;
   gameMode: string;
   format: string;
@@ -208,6 +213,7 @@ export interface OrganizerData {
   password: string;
   displayName: string;
   canManageOrganizers: boolean;
+  maxTournaments?: number;
   createdBy?: string;
   createdAt: number;
 }
@@ -221,6 +227,7 @@ export interface OrganizerInput {
   password: string;
   displayName: string;
   canManageOrganizers?: boolean;
+  maxTournaments?: number;
 }
 
 export interface ParticipantTarget {
@@ -232,6 +239,32 @@ export interface OrganizerUpdate {
   username?: string;
   displayName?: string;
   canManageOrganizers?: boolean;
+  maxTournaments?: number;
+}
+
+export type MessageFrom = 'organizer' | 'admin';
+
+export interface InboxMessage {
+  id: string;
+  from: MessageFrom;
+  text: string;
+  at: number;
+}
+
+export interface InboxThread {
+  organizerId: string;
+  organizerName: string;
+  messages: InboxMessage[];
+  adminUnread: boolean;
+  organizerUnread: boolean;
+  updatedAt: number;
+}
+
+export interface ChatLine {
+  id: number;
+  mine: boolean;
+  text: string;
+  at: number;
 }
 
 export interface ForgeImport {

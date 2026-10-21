@@ -6,6 +6,7 @@ import {
   inject,
   input,
   output,
+  resource,
   signal,
   untracked,
 } from '@angular/core';
@@ -14,6 +15,7 @@ import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import {
   DEFAULT_CLOSING_MESSAGE,
   DEFAULT_TIMEZONE,
+  LOCKED_NOTICE,
   TIMEZONE_OPTIONS,
   WINNER_PLACES,
 } from '../../core/config/constants';
@@ -36,20 +38,27 @@ import {
 } from '../../core/config/games';
 import { computeLeaderboard, DEFAULT_SCORING, scoringGames } from '../../core/utils/scoring';
 import {
+  ForgeState,
   MixedGameEntry,
   Organizer,
   ScoringConfig,
   Tournament,
   TournamentInput,
+  TournamentUpdate,
   Winner,
 } from '../../core/models/models';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
-import { TournamentService } from '../../core/services/tournament.service';
+import { TournamentLimitError, TournamentService } from '../../core/services/tournament.service';
 import { deserializeStages, podiumFromSavedBracket } from '../../core/utils/bracket';
 import { formatPlatoId } from '../../core/utils/plato';
 import { localPartsToUtc, utcToLocalParts } from '../../core/utils/time';
-import { registrationLabel, winnersFromPodium } from '../../core/utils/tournament';
+import {
+  registrationLabel,
+  usesFreeRounds,
+  winnersFromPodium,
+  withPrizes,
+} from '../../core/utils/tournament';
 import { Checkbox } from '../../shared/forms/checkbox';
 import { Input } from '../../shared/forms/input';
 import { Select } from '../../shared/forms/select';
@@ -60,6 +69,7 @@ import { Card } from '../../shared/ui/card';
 import { ChipList } from '../../shared/ui/chip-list';
 import { Field } from '../../shared/ui/field';
 import { MixedGamesEditor } from './mixed-games-editor';
+import { PublishConfirmModal } from './publish-confirm-modal';
 
 const POINT_FIELDS = [
   { key: 'villagersWin', label: 'Villagers - win points' },
@@ -104,6 +114,7 @@ const toScoring = (values: ReturnType<typeof pointValues>, enabled: boolean): Sc
     AddRow,
     ChipList,
     MixedGamesEditor,
+    PublishConfirmModal,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './tournament-form.html',
@@ -141,6 +152,7 @@ export class TournamentForm {
     groupName: '',
     closingMessage: '',
     winners: this.fb.array(WINNER_PLACES.map(() => '')),
+    prizes: this.fb.array(WINNER_PLACES.map(() => '')),
   });
 
   protected readonly settings = signal<Record<string, string>>({});
@@ -149,6 +161,36 @@ export class TournamentForm {
   protected readonly managerIds = signal<string[]>([]);
   protected readonly saving = signal(false);
   protected readonly pulling = signal(false);
+  protected readonly confirmOpen = signal(false);
+  private pending: TournamentUpdate | null = null;
+
+  protected readonly lockedNotice = LOCKED_NOTICE;
+  protected readonly canPull = computed(() => {
+    const tournament = this.editing();
+    return !!tournament && !!this.resolveWinners(tournament, tournament.forgeState);
+  });
+  protected readonly winnersEditable = computed(() => {
+    const tournament = this.editing();
+    if (!tournament) return false;
+    const started = !!tournament.forgeState?.bracket?.stages?.length;
+    return (
+      this.canPull() || tournament.winners.length > 0 || (started && usesFreeRounds(tournament))
+    );
+  });
+  protected readonly resultsOnly = computed(() => !!this.editing()?.locked && !this.auth.isAdmin());
+  protected readonly quota = resource({
+    params: () => (this.auth.session()?.role === 'organizer' ? this.auth.session() : undefined),
+    loader: async ({ params }) => {
+      try {
+        return await this.tournaments.quota(params);
+      } catch {
+        return null;
+      }
+    },
+  });
+  protected readonly quotaReached = computed(
+    () => !this.editing() && !!this.quota.value()?.reached,
+  );
 
   private readonly values = toSignal(this.form.valueChanges, {
     initialValue: this.form.getRawValue(),
@@ -271,27 +313,17 @@ export class TournamentForm {
     this.pulling.set(true);
     try {
       const state = await this.tournaments.getForgeState(tournament.id);
-      if (tournament.scoring?.enabled && state?.games?.length) {
-        const rows = computeLeaderboard(
-          tournament.registrations.map((r) => registrationLabel(r, tournament.teamSize)),
-          scoringGames(state.games, deserializeStages(state.bracket?.stages ?? [])),
-          tournament.scoring,
-        )
-          .filter((r) => r.games > 0)
-          .slice(0, 4);
-        this.setWinners(rows.map((r, i) => ({ place: i + 1, name: formatPlatoId(r.name) })));
-        this.toast.show('Winners pulled from the points leaderboard!');
-        return;
-      }
-      const podium = state ? podiumFromSavedBracket(state.bracket) : null;
-      if (!podium) {
+      const pulled = this.resolveWinners(tournament, state);
+      if (!pulled) {
         this.toast.show('No completed Match Bracket found for this tournament yet.');
         return;
       }
-      this.setWinners(
-        winnersFromPodium(podium).map((w) => ({ ...w, name: formatPlatoId(w.name) })),
+      this.setWinners(withPrizes(pulled.winners, tournament), true);
+      this.toast.show(
+        pulled.fromPoints
+          ? 'Winners pulled from the points leaderboard!'
+          : 'Winners pulled from the Match Bracket!',
       );
-      this.toast.show('Winners pulled from the Match Bracket!');
     } catch (err) {
       this.toast.show('Could not load the Match Bracket - check your connection.');
       console.error(err);
@@ -300,9 +332,50 @@ export class TournamentForm {
     }
   }
 
+  private resolveWinners(
+    tournament: Tournament,
+    state: ForgeState | null | undefined,
+  ): { winners: Winner[]; fromPoints: boolean } | null {
+    if (!state) return null;
+    if (tournament.scoring?.enabled && state.games?.length) {
+      const rows = computeLeaderboard(
+        tournament.registrations.map((r) => registrationLabel(r, tournament.teamSize)),
+        scoringGames(state.games, deserializeStages(state.bracket?.stages ?? [])),
+        tournament.scoring,
+      )
+        .filter((r) => r.games > 0)
+        .slice(0, 4);
+      if (rows.length) {
+        return {
+          winners: rows.map((r, i) => ({ place: i + 1, name: formatPlatoId(r.name) })),
+          fromPoints: true,
+        };
+      }
+    }
+    const podium = podiumFromSavedBracket(state.bracket);
+    return podium
+      ? {
+          winners: winnersFromPodium(podium).map((w) => ({ ...w, name: formatPlatoId(w.name) })),
+          fromPoints: false,
+        }
+      : null;
+  }
+
   protected async submit(): Promise<void> {
     const session = this.auth.session();
     const value = this.form.getRawValue();
+    const editing = this.editing();
+    if (editing && this.resultsOnly()) {
+      await this.persist({
+        winners: this.collectWinners(value.winners, value.prizes),
+        closingMessage: value.closingMessage,
+      });
+      return;
+    }
+    if (this.quotaReached()) {
+      this.toast.show('You have reached your tournament limit. Contact Speedy on Plato.');
+      return;
+    }
     const mixed = this.isMixed() ? this.mixedEntries() : [];
     if (this.isMixed() && mixed.length < 2) {
       this.toast.show('Add at least 2 games for a mixed tournament.');
@@ -331,45 +404,83 @@ export class TournamentForm {
       sponsor: value.sponsor,
       groupName: value.groupName,
       closingMessage: value.closingMessage,
-      winners: this.collectWinners(value.winners),
+      winners: this.collectWinners(value.winners, value.prizes),
       hosts: [...this.hosts()],
       startUTC: localPartsToUtc(value.date, value.time, value.timezone),
       createdTZ: value.timezone,
       ...(this.auth.canViewOrganizers() ? { managerIds: [...this.managerIds()] } : {}),
     };
 
-    this.saving.set(true);
+    if (session?.role === 'organizer') {
+      this.pending = editing ? { ...input, locked: true } : input;
+      this.confirmOpen.set(true);
+      return;
+    }
+    await this.persist(input);
+  }
+
+  protected async confirmPublish(): Promise<void> {
+    const input = this.pending;
+    this.pending = null;
+    if (input) await this.persist(input);
+  }
+
+  protected cancelPublish(): void {
+    this.pending = null;
+  }
+
+  private async persist(input: TournamentInput | TournamentUpdate): Promise<void> {
+    const session = this.auth.session();
     const editing = this.editing();
+    this.saving.set(true);
     try {
       const result = editing
         ? await this.tournaments.update(editing.id, input, session)
-        : await this.tournaments.create(input, session);
+        : await this.tournaments.create(input as TournamentInput, session);
       this.toast.show(
         editing
           ? result
             ? 'Tournament updated!'
-            : 'Could not update - check permissions.'
+            : 'Could not update - this tournament is locked or you lack permission.'
           : 'Tournament published! It’s now live on the home page.',
       );
+      if (editing && !result) return;
       this.reset();
       this.saved.emit();
+      this.quota.reload();
     } catch (err) {
-      this.toast.show('Something went wrong saving the tournament.');
+      this.toast.show(
+        err instanceof TournamentLimitError
+          ? 'You have reached your tournament limit. Contact Speedy on Plato.'
+          : 'Something went wrong saving the tournament.',
+      );
       console.error(err);
     } finally {
       this.saving.set(false);
     }
   }
 
-  private collectWinners(names: string[]): Winner[] {
+  private collectWinners(names: string[], prizes: string[]): Winner[] {
     return names
-      .map((name, i) => ({ place: WINNER_PLACES[i].place, name: name.trim() }))
+      .map((name, i) => {
+        const prize = (prizes[i] ?? '').trim();
+        return {
+          place: WINNER_PLACES[i].place,
+          name: name.trim(),
+          ...(prize ? { prize } : {}),
+        };
+      })
       .filter((w) => w.name);
   }
 
-  private setWinners(winners: Winner[]): void {
-    const byPlace = new Map(winners.map((w) => [w.place, w.name]));
-    this.form.controls.winners.setValue(WINNER_PLACES.map((p) => byPlace.get(p.place) ?? ''));
+  private setWinners(winners: Winner[], withPrize = false): void {
+    const byPlace = new Map(winners.map((w) => [w.place, w]));
+    this.form.controls.winners.setValue(WINNER_PLACES.map((p) => byPlace.get(p.place)?.name ?? ''));
+    if (withPrize) {
+      this.form.controls.prizes.setValue(
+        WINNER_PLACES.map((p) => byPlace.get(p.place)?.prize ?? ''),
+      );
+    }
   }
 
   private reset(): void {
@@ -406,6 +517,7 @@ export class TournamentForm {
       groupName: t.groupName || '',
       closingMessage: t.closingMessage || '',
       winners: WINNER_PLACES.map(() => ''),
+      prizes: WINNER_PLACES.map(() => ''),
     });
     this.populating = false;
     const def = known ?? CUSTOM_GAME_DEF;
@@ -415,6 +527,8 @@ export class TournamentForm {
     });
     this.mixedEntries.set(mixedTournament ? t.mixed.map((m) => ({ ...m })) : defaultMixedEntries());
     this.setWinners(t.winners);
+    const prizeByPlace = new Map(t.winners.map((w) => [w.place, w.prize ?? '']));
+    this.form.controls.prizes.setValue(WINNER_PLACES.map((p) => prizeByPlace.get(p.place) ?? ''));
     this.hosts.set([...t.hosts]);
     this.managerIds.set([...t.managerIds]);
   }

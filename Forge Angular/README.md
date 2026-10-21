@@ -9,6 +9,7 @@ Angular version of the plain HTML/CSS/JS TourneyForge app. Same Firestore backen
 - `npm run build` - production build into `dist/tourney-forge/browser`
 - `npm test` - unit tests (Vitest)
 - `npm run deploy` - build, then deploy to Firebase Hosting (uses `../firebase.json`)
+- `npm run deploy:rules` - publish `../firestore.rules` (needed once for the organizer inbox)
 
 ## Deploy
 

@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
-import { DEFAULT_TIMEZONE } from '../../core/config/constants';
+import { DEFAULT_TIMEZONE, LOCKED_NOTICE } from '../../core/config/constants';
 import { Organizer, Tournament } from '../../core/models/models';
 import { AuthService } from '../../core/services/auth.service';
 import { ForgeImportService } from '../../core/services/forge-import.service';
@@ -10,10 +10,11 @@ import { Button } from '../../shared/ui/button';
 import { Card } from '../../shared/ui/card';
 import { ListRow } from '../../shared/ui/list-row';
 import { StatusBadge } from '../../shared/ui/status-badge';
+import { Tag } from '../../shared/ui/tag';
 
 @Component({
   selector: 'tf-tournament-list',
-  imports: [Card, ListRow, StatusBadge, Button],
+  imports: [Card, ListRow, StatusBadge, Button, Tag],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './tournament-list.html',
 })
@@ -34,6 +35,34 @@ export class TournamentList {
   readonly changed = output<void>();
 
   protected readonly busyId = signal<string | null>(null);
+  protected readonly lockedNotice = LOCKED_NOTICE;
+
+  protected isLockedFor(t: Tournament): boolean {
+    return t.locked && !this.auth.isAdmin();
+  }
+
+  protected async toggleLock(t: Tournament): Promise<void> {
+    this.busyId.set(t.id);
+    try {
+      const result = await this.tournamentService.update(
+        t.id,
+        { locked: !t.locked },
+        this.auth.session(),
+      );
+      if (!result) {
+        this.toast.show('Could not update - check permissions.');
+        return;
+      }
+      this.toast.show(
+        t.locked
+          ? 'Editing allowed. The organizer can edit and publish again.'
+          : 'Tournament locked.',
+      );
+      this.changed.emit();
+    } finally {
+      this.busyId.set(null);
+    }
+  }
 
   protected hasBracket(t: Tournament): boolean {
     return (
@@ -81,10 +110,14 @@ export class TournamentList {
     }
   }
 
-  protected async remove(id: string): Promise<void> {
+  protected async remove(t: Tournament): Promise<void> {
+    if (this.isLockedFor(t)) {
+      this.toast.show(LOCKED_NOTICE);
+      return;
+    }
     if (!confirm('Delete this tournament? This cannot be undone.')) return;
-    await this.tournamentService.remove(id, this.auth.session());
+    const removed = await this.tournamentService.remove(t.id, this.auth.session());
     this.changed.emit();
-    this.toast.show('Tournament deleted.');
+    this.toast.show(removed ? 'Tournament deleted.' : 'Could not delete this tournament.');
   }
 }

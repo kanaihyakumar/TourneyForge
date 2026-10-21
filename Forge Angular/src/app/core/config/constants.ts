@@ -83,3 +83,20 @@ export const USAGE_WARN_RATIO = 0.8;
 export const USAGE_FLUSH_MS = 30000;
 export const USAGE_HISTORY_DAYS = 90;
 export const USAGE_TIMEZONE = 'America/Los_Angeles';
+
+export const CONTACT_PLATO_ID = 'Speedy40';
+export const CONTACT_DISCORD_ID = 'speedy_speedy';
+export const DISCORD_ICON = '👾';
+
+export const ADMIN_PEER_ID = 'tourneyforge-admin-chat-7c41e9a2';
+export const MAX_CHAT_TEXT = 500;
+export const MAX_CHAT_LINES = 200;
+export const MAX_INBOX_MESSAGES = 100;
+export const INBOX_POLL_MS = 120_000;
+export const CHAT_CONNECT_TIMEOUT_MS = 12_000;
+
+export const LOCKED_NOTICE = `This tournament is published and locked. To change its details, contact Speedy on Plato (platoid: ${CONTACT_PLATO_ID}) or on Discord (${DISCORD_ICON} ${CONTACT_DISCORD_ID}).`;
+
+export const PUBLISH_NOTICE = `Are you sure you want to publish this tournament? Once published it cannot be edited or deleted. To make changes afterwards, contact Speedy on Plato (platoid: ${CONTACT_PLATO_ID}) or on Discord (${DISCORD_ICON} ${CONTACT_DISCORD_ID}).`;
+
+export const LOCK_EXEMPT_FIELDS = ['completed', 'cancelled', 'winners', 'closingMessage'];

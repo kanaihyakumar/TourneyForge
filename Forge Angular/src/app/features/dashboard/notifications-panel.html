@@ -1,0 +1,116 @@
+<tf-card
+  icon="🔔"
+  title="Live chat requests"
+  hint="Organizers who ask for a live chat show up here. Chats are never saved, and only you can close them."
+>
+  @switch (live.adminLink()) {
+    @case ('starting') {
+      <p class="empty-note">Connecting to the live chat network…</p>
+    }
+    @case ('taken') {
+      <p class="empty-note">
+        Live chat is already open in another tab or window. Close it there to receive requests here.
+      </p>
+    }
+    @case ('error') {
+      <p class="empty-note">Couldn’t reach the live chat network. Retrying…</p>
+    }
+  }
+  @for (chat of requests(); track chat.id) {
+    <tf-list-row>
+      <ng-container ngProjectAs="[rowTitle]">
+        {{ chat.status === 'pending' ? '🔔' : '⚠️' }} {{ chat.organizerName }}
+        <tf-tag>{{ chat.status === 'pending' ? 'wants to chat' : 'disconnected' }}</tf-tag>
+      </ng-container>
+      <ng-container ngProjectAs="[rowSub]"
+        >Requested {{ chat.since | date: 'h:mm a' }}</ng-container
+      >
+      <ng-container ngProjectAs="[rowActions]">
+        @if (chat.status === 'pending') {
+          <button type="button" tfButton variant="primary" size="sm" (click)="startChat(chat.id)">
+            ▶️ Start chat
+          </button>
+          <button type="button" tfButton size="sm" (click)="live.closeChat(chat.id)">
+            Decline
+          </button>
+        } @else {
+          <button type="button" tfButton size="sm" (click)="openChat(chat.id)">👀 Open</button>
+          <button
+            type="button"
+            tfButton
+            variant="danger"
+            size="sm"
+            (click)="closeChat(chat.id, chat.organizerName)"
+          >
+            🛑 Close
+          </button>
+        }
+      </ng-container>
+    </tf-list-row>
+  }
+  @for (chat of running(); track chat.id) {
+    <tf-list-row>
+      <ng-container ngProjectAs="[rowTitle]">
+        💬 {{ chat.organizerName }} <tf-tag>chatting</tf-tag>
+        @if (chat.unread) {
+          <tf-tag>{{ chat.unread }} new</tf-tag>
+        }
+      </ng-container>
+      <ng-container ngProjectAs="[rowSub]">{{ chat.lines.length }} messages so far</ng-container>
+      <ng-container ngProjectAs="[rowActions]">
+        <button type="button" tfButton size="sm" (click)="openChat(chat.id)">💬 Open</button>
+        <button
+          type="button"
+          tfButton
+          variant="danger"
+          size="sm"
+          (click)="closeChat(chat.id, chat.organizerName)"
+        >
+          🛑 Close chat
+        </button>
+      </ng-container>
+    </tf-list-row>
+  }
+  @if (!live.chats().length) {
+    <p class="empty-note">No live chat requests right now.</p>
+  }
+</tf-card>
+
+<tf-card
+  icon="📬"
+  title="Messages from organizers"
+  hint="Organizers can leave you a message anytime. Pick a conversation to read and reply."
+>
+  <div class="btn-row flush">
+    <button type="button" tfButton size="sm" [disabled]="loading()" (click)="refresh()">
+      🔄 Refresh
+    </button>
+  </div>
+  @if (inbox.threads(); as threads) {
+    <div class="threads">
+      @for (t of threads; track t.organizerId) {
+        <button
+          type="button"
+          tfPill
+          [active]="openId() === t.organizerId"
+          (click)="openThread(t.organizerId)"
+        >
+          {{ t.adminUnread ? '🔴' : '💬' }} {{ t.organizerName || 'Organizer' }}
+        </button>
+      } @empty {
+        <p class="empty-note">No messages yet.</p>
+      }
+    </div>
+  } @else {
+    <p class="empty-note">Loading…</p>
+  }
+  @if (thread(); as t) {
+    <h3 class="with">Conversation with {{ t.organizerName || 'Organizer' }}</h3>
+    <tf-chat-thread
+      [lines]="lines()"
+      placeholder="Write a reply"
+      emptyText="No messages yet."
+      (sent)="reply($event)"
+    />
+  }
+</tf-card>

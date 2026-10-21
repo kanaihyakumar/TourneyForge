@@ -8,6 +8,7 @@ import {
   getDoc,
   getDocs,
   getFirestore,
+  setDoc,
   Query,
   UpdateData,
   updateDoc,
@@ -37,6 +38,11 @@ export class FirestoreService {
     const ref = await addDoc(collection, data as DocumentData);
     this.pending.writes += 1;
     return ref;
+  }
+
+  async setDoc(ref: DocumentReference, data: object) {
+    await setDoc(ref, data as DocumentData);
+    this.pending.writes += 1;
   }
 
   async updateDoc(ref: DocumentReference, data: object) {

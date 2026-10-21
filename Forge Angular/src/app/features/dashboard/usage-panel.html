@@ -147,8 +147,8 @@
 
 <tf-card
   icon="🧽"
-  title="Clear multiple tournaments"
-  hint="Pick the tournaments and the data to clear from each of them."
+  title="Clear or delete multiple tournaments"
+  hint="Pick the tournaments, then clear some of their data or delete them completely."
 >
   <div class="btn-row flush quick-select">
     <button type="button" tfButton size="sm" (click)="selectAll()">Select all</button>
@@ -180,7 +180,20 @@
       <button type="submit" tfButton variant="danger" [disabled]="bulkBusy() || !selected().length">
         🧽 Clear selected tournaments ({{ selected().length }})
       </button>
+      <button
+        type="button"
+        tfButton
+        variant="danger"
+        [disabled]="bulkBusy() || !selected().length"
+        (click)="deleteSelected()"
+      >
+        🗑️ Delete selected tournaments completely ({{ selected().length }})
+      </button>
     </div>
+    <p class="field-note">
+      Deleting removes the tournament itself along with its participants, bracket, winners and
+      everything else stored for it.
+    </p>
   </form>
 </tf-card>
 

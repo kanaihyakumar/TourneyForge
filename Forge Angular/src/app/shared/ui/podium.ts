@@ -17,6 +17,9 @@ import { podiumRows } from '../../core/utils/tournament';
         @if (row.detail) {
           <span class="detail">{{ row.detail }}</span>
         }
+        @if (row.prize) {
+          <span class="prize">🎁 {{ row.prize }}</span>
+        }
         <span class="place">{{ row.label }}</span>
       </div>
     }
@@ -93,6 +96,12 @@ import { podiumRows } from '../../core/utils/tournament';
       font-size: 0.74rem;
       font-weight: 800;
       color: var(--accent-dark);
+    }
+
+    .prize {
+      font-size: 0.74rem;
+      font-weight: 800;
+      color: var(--success);
     }
 
     .place {

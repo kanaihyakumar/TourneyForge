@@ -31,6 +31,7 @@ export class OrganizerService {
       password: input.password,
       displayName: input.displayName.trim(),
       canManageOrganizers: !!input.canManageOrganizers,
+      maxTournaments: Math.max(0, Math.floor(Number(input.maxTournaments) || 0)),
       createdBy: creator?.id ?? 'admin',
       createdAt: Date.now(),
     };
@@ -50,6 +51,9 @@ export class OrganizerService {
     if (input.displayName) updates.displayName = input.displayName.trim();
     if (input.canManageOrganizers !== undefined)
       updates.canManageOrganizers = !!input.canManageOrganizers;
+    if (input.maxTournaments !== undefined) {
+      updates.maxTournaments = Math.max(0, Math.floor(Number(input.maxTournaments) || 0));
+    }
     await this.firestore.updateDoc(ref, updates);
     if (updates.displayName) {
       await this.tournaments.patchByOrganizer(id, { organizerName: updates.displayName });

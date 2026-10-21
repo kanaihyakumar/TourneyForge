@@ -30,6 +30,19 @@
             Allow this organizer to add more organizers (admin only setting)
           </tf-checkbox>
         </div>
+        <tf-field
+          class="span-2"
+          label="Tournament limit"
+          hint="(how many tournaments they can create - 0 means unlimited)"
+          for="og_limit"
+        >
+          <tf-input
+            inputId="og_limit"
+            type="number"
+            placeholder="0"
+            formControlName="maxTournaments"
+          />
+        </tf-field>
       }
     </div>
     <div class="btn-row">
@@ -50,6 +63,9 @@
           {{ o.displayName }} <tf-tag>&#64;{{ o.username }}</tf-tag>
           @if (o.canManageOrganizers) {
             <tf-tag>🔑 Can add organizers</tf-tag>
+          }
+          @if (o.maxTournaments) {
+            <tf-tag>🎟️ Limit: {{ o.maxTournaments }}</tf-tag>
           }
         </ng-container>
         <ng-container ngProjectAs="[rowSub]"

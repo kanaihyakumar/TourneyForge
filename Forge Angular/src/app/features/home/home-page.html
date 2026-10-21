@@ -5,6 +5,8 @@
 
 <tf-credit-line />
 
+<tf-winners-marquee [tournaments]="completed()" />
+
 <section>
   <h2 class="section-title">🔥 Live & Upcoming</h2>
   @if (tournaments.error()) {

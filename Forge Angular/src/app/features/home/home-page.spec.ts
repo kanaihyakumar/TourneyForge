@@ -60,26 +60,57 @@ describe('HomePage', () => {
     await fixture.whenStable();
 
     const cards = root.querySelectorAll('tf-tour-card');
-    expect(cards.length).toBe(2);
+    expect(cards.length).toBe(3);
     expect(root.textContent).toContain('🟢 LIVE NOW');
     expect(root.textContent).toContain('🕒 UPCOMING');
     expect(root.textContent).toContain('2v2');
     expect(root.textContent).toContain('1/2 teams');
     expect(root.textContent).toContain('You’re registered');
     expect(root.textContent).toContain('Sponsored by ACME');
-    expect(root.textContent).toContain('Show completed tournaments (1)');
+    expect(root.textContent).toContain('Hide completed tournaments (1)');
+    expect(root.querySelector('tf-winners-marquee')?.textContent).toContain('@Champ');
     expect(root.querySelector('tf-credit-line')?.textContent).toContain('Made with');
     expect(root.querySelector('tf-credit-line')?.textContent).not.toContain('Want to use');
     expect(root.querySelector('tf-contact-line')?.textContent).toContain(
-      'Want to use TourneyForge for your own group? Contact Speedy on Plato (platoid: Speedy40).',
+      'Want to use TourneyForge for your own group? Contact Speedy on Plato (platoid: Speedy40) or on Discord (👾 speedy_speedy).',
     );
 
+    expect(root.querySelectorAll('tf-tour-card').length).toBe(3);
     (root.querySelector('button[tfPill]') as HTMLElement).click();
     await fixture.whenStable();
-    expect(root.querySelectorAll('tf-tour-card').length).toBe(3);
+    expect(root.querySelectorAll('tf-tour-card').length).toBe(2);
+    (root.querySelector('button[tfPill]') as HTMLElement).click();
+    await fixture.whenStable();
     expect(root.textContent).toContain('Here are the winners!');
     expect(root.textContent).toContain('@Champ');
     expect(root.textContent).toContain('GG');
+  });
+
+  it('lists the latest completed tournament first and scrolls the winners', async () => {
+    const done = (id: string, hoursAgo: number, winner: string) =>
+      make(id, {
+        startUTC: Date.now() - hoursAgo * 3600_000,
+        winners: [{ place: 1, name: winner, prize: '2K coins' }],
+      });
+    TestBed.overrideProvider(TournamentService, {
+      useValue: {
+        list: vi.fn().mockResolvedValue([done('a', 200, 'Older'), done('b', 100, 'Newer')]),
+        myRegistrations: signal<string[]>([]),
+      },
+    });
+    const fixture = TestBed.createComponent(HomePage);
+    const root = fixture.nativeElement as HTMLElement;
+    await fixture.whenStable();
+    await fixture.whenStable();
+
+    const titles = Array.from(root.querySelectorAll('tf-tour-card')).map((c) => c.textContent);
+    expect(titles[0]).toContain('Cup b');
+    expect(titles[1]).toContain('Cup a');
+    const marquee = root.querySelector('tf-winners-marquee') as HTMLElement;
+    expect(marquee.querySelectorAll('.group').length).toBe(2);
+    expect(marquee.querySelector('.item')?.textContent).toContain('Newer');
+    expect(marquee.querySelector('.item')?.textContent).toContain('🎁 2K coins');
+    expect(root.querySelector('tf-tour-card tf-podium')?.textContent).toContain('🎁 2K coins');
   });
 
   it('opens the detail modal from a card', async () => {
@@ -205,8 +236,6 @@ describe('HomePage', () => {
     const fixture = TestBed.createComponent(HomePage);
     const root = fixture.nativeElement as HTMLElement;
     await fixture.whenStable();
-    await fixture.whenStable();
-    (root.querySelector('button[tfPill]') as HTMLElement).click();
     await fixture.whenStable();
 
     const cards = Array.from(root.querySelectorAll('tf-tour-card'));

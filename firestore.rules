@@ -21,6 +21,10 @@ service cloud.firestore {
       allow read: if true;
       allow write: if true;
     }
+    match /inbox/{organizerId} {
+      allow read: if true;
+      allow write: if true;
+    }
     match /config/{docId} {
       allow read: if true;
       allow write: if true;

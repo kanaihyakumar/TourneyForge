@@ -43,10 +43,11 @@ export function withMeta(id: string, data: TournamentData): Tournament {
     registeredCount: registrations.length,
     hosts: data.hosts || [],
     managerIds: data.managerIds || [],
-    winners: data.winners || [],
+    winners: withPrizes(data.winners || [], data),
     closingMessage: data.closingMessage || '',
     completed: !!data.completed,
     cancelled: !!data.cancelled,
+    locked: data.locked !== false,
     teamSize,
     gameMode: data.gameMode ?? '',
     format: data.format ?? (teamSize === 2 ? '2v2' : '1v1'),
@@ -58,6 +59,48 @@ export function withMeta(id: string, data: TournamentData): Tournament {
       : {}),
     teamCapacity: capacityFor(data.slots, teamSize),
   };
+}
+
+const PLACE_TOKENS: [number, RegExp][] = [
+  [1, /^(🥇|1st|first)$/iu],
+  [2, /^(🥈|2nd|second)$/iu],
+  [3, /^(🥉|3rd|third)$/iu],
+  [4, /^(4\uFE0F?\u20E3|4th|fourth)$/iu],
+];
+const LINE_START =
+  /^[^\p{L}\p{N}]*(🥇|🥈|🥉|4\uFE0F?\u20E3|1st|2nd|3rd|4th|first|second|third|fourth)/iu;
+const PLACE_WORDS =
+  /🥇|🥈|🥉|4\uFE0F?\u20E3|\b(1st|2nd|3rd|4th|first|second|third|fourth|place|prize|winner)\b/giu;
+
+export function parsePrizes(text: string): Map<number, string> {
+  const prizes = new Map<number, string>();
+  for (const line of text.split('\n')) {
+    const start = LINE_START.exec(line);
+    if (!start) continue;
+    const place = PLACE_TOKENS.find(([, re]) => re.test(start[1]))?.[0];
+    if (!place || prizes.has(place)) continue;
+    const prize = line
+      .replace(PLACE_WORDS, '')
+      .replace(/^[^\p{L}\p{N}]+/u, '')
+      .replace(/[^\p{L}\p{N}.)%+]+$/u, '')
+      .trim();
+    if (/\d/.test(prize)) prizes.set(place, prize);
+  }
+  return prizes;
+}
+
+export function withPrizes(
+  winners: Winner[],
+  source: Pick<TournamentData, 'announcement' | 'details'> & { prizeText?: string },
+): Winner[] {
+  if (!winners.some((w) => !w.prize)) return winners;
+  const parsed = parsePrizes(
+    [source.prizeText, source.announcement, source.details].filter(Boolean).join('\n'),
+  );
+  return winners.map((w) => {
+    const prize = w.prize || parsed.get(w.place);
+    return prize ? { ...w, prize } : w;
+  });
 }
 
 export function sortTournaments(list: Tournament[]): Tournament[] {
@@ -105,6 +148,7 @@ export function podiumRows(winners: Winner[]): PodiumRow[] {
       label: ordinal(w.place) + ' Place',
       name: w.name,
       detail: w.detail,
+      prize: w.prize,
     }));
 }
 

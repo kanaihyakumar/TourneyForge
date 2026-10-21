@@ -5,6 +5,7 @@ export interface TabItem {
   id: string;
   label: string;
   hidden?: boolean;
+  badge?: number;
 }
 
 @Component({
@@ -24,12 +25,28 @@ export interface TabItem {
             (click)="active.set(tab.id)"
           >
             {{ tab.label }}
+            @if (tab.badge) {
+              <span class="badge">{{ tab.badge }}</span>
+            }
           </button>
         }
       }
     </div>
   `,
   styles: `
+    .badge {
+      display: inline-block;
+      min-width: 18px;
+      margin-left: 6px;
+      padding: 1px 6px;
+      border-radius: var(--radius-pill);
+      background: var(--danger);
+      color: var(--accent-contrast);
+      font-size: 0.7rem;
+      line-height: 1.4;
+      text-align: center;
+    }
+
     .tab-row {
       display: flex;
       gap: 10px;

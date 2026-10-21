@@ -1,0 +1,28 @@
+.legal {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  line-height: 1.65;
+  color: var(--text-soft);
+  font-weight: 600;
+}
+
+h3 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+  font-weight: 900;
+  color: var(--text);
+}
+
+p {
+  margin: 0 0 8px;
+}
+
+ul {
+  margin: 0;
+  padding-left: 22px;
+}
+
+li {
+  margin-bottom: 4px;
+}
