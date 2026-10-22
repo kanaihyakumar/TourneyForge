@@ -145,6 +145,15 @@ describe('DashboardPage', () => {
                   canManageOrganizers: false,
                   createdAt: 0,
                 },
+                {
+                  id: 'o3',
+                  username: 'ben',
+                  usernameLower: 'ben',
+                  password: 'x',
+                  displayName: 'Ben',
+                  canManageOrganizers: false,
+                  createdAt: 0,
+                },
               ]),
           },
         },
@@ -675,7 +684,7 @@ describe('DashboardPage', () => {
     expect((done.nativeElement as HTMLElement).querySelector('tf-segmented')).toBeNull();
   });
 
-  it('lets an admin assign a tournament to an organizer and remove the assignment', async () => {
+  it('lets an admin assign several organizers to a tournament and remove them', async () => {
     current = tournament({ organizerId: 'admin', organizerName: 'Admin', managerIds: [] });
     const fixture = TestBed.createComponent(DashboardPage);
     const root = fixture.nativeElement as HTMLElement;
@@ -684,34 +693,64 @@ describe('DashboardPage', () => {
     button(root, 'Assign')?.click();
     await settle(fixture);
     const modal = root.querySelector('tf-assign-modal') as HTMLElement;
-    expect(modal.textContent).toContain('Currently assigned to');
-    expect(modal.textContent).toContain('Admin');
-    expect(button(modal, 'Remove assignment')).toBeUndefined();
-    const select = modal.querySelector('#assignOwner') as HTMLSelectElement;
-    expect(Array.from(select.options).map((o) => o.text.trim())).toEqual(['Bella (@bella)']);
+    const boxes = () =>
+      Array.from(modal.querySelectorAll('tf-checkbox input')) as HTMLInputElement[];
+    expect(boxes().length).toBe(2);
+    expect(boxes().some((b) => b.checked)).toBe(false);
+    expect(button(modal, 'Save assignment')?.disabled).toBe(true);
+    expect(button(modal, 'Remove all')).toBeUndefined();
+    expect(modal.textContent).toContain('belongs to Admin');
 
-    button(modal, 'Assign')?.click();
+    boxes()[0].click();
+    boxes()[1].click();
+    await settle(fixture);
+    expect(modal.textContent).toContain('Bella is the primary organizer');
+    expect(button(modal, 'Save assignment')?.disabled).toBe(false);
+    button(modal, 'Save assignment')?.click();
     await settle(fixture);
     expect(assign).toHaveBeenLastCalledWith(
       't1',
-      { id: 'o2', displayName: 'Bella' },
+      [
+        { id: 'o2', displayName: 'Bella' },
+        { id: 'o3', displayName: 'Ben' },
+      ],
       expect.anything(),
     );
     expect(root.querySelector('tf-assign-modal [role="dialog"]')).toBeNull();
-
-    current = tournament({ organizerId: 'o2', organizerName: 'Bella', managerIds: [] });
     fixture.destroy();
+
+    current = tournament({ organizerId: 'o2', organizerName: 'Bella', managerIds: ['o3'] });
     const again = TestBed.createComponent(DashboardPage);
     const root2 = again.nativeElement as HTMLElement;
     await settle(again);
-    expect(root2.querySelector('tf-tournament-list')?.textContent).toContain('assigned to Bella');
+    const list = (root2.querySelector('tf-tournament-list')?.textContent ?? '').replace(
+      /\s+/g,
+      ' ',
+    );
+    expect(list).toContain('assigned to Bella');
+    expect(list).toContain('co-managed by Ben');
     button(root2, 'Assign')?.click();
     await settle(again);
     const modal2 = root2.querySelector('tf-assign-modal') as HTMLElement;
-    expect(modal2.textContent).toContain('Bella');
-    button(modal2, 'Remove assignment')?.click();
+    const checks = Array.from(modal2.querySelectorAll('tf-checkbox input')) as HTMLInputElement[];
+    expect(checks.map((c) => c.checked)).toEqual([true, true]);
+
+    checks[0].click();
     await settle(again);
-    expect(assign).toHaveBeenLastCalledWith('t1', null, expect.anything());
+    expect(modal2.textContent).toContain('Ben is the primary organizer');
+    button(modal2, 'Save assignment')?.click();
+    await settle(again);
+    expect(assign).toHaveBeenLastCalledWith(
+      't1',
+      [{ id: 'o3', displayName: 'Ben' }],
+      expect.anything(),
+    );
+
+    button(root2, 'Assign')?.click();
+    await settle(again);
+    button(root2.querySelector('tf-assign-modal') as HTMLElement, 'Remove all')?.click();
+    await settle(again);
+    expect(assign).toHaveBeenLastCalledWith('t1', [], expect.anything());
   });
 
   it('does not show the Assign action to organizers', async () => {

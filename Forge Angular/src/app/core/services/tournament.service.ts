@@ -231,7 +231,7 @@ export class TournamentService {
 
   async assign(
     id: string,
-    owner: { id: string; displayName: string } | null,
+    owners: { id: string; displayName: string }[],
     session: Session | null,
   ): Promise<Tournament | null> {
     if (session?.role !== 'admin') return null;
@@ -239,11 +239,12 @@ export class TournamentService {
     const snap = await this.firestore.getDoc(ref);
     if (!snap.exists()) return null;
     const existing = snap.data() as TournamentData;
-    const ownerId = owner?.id ?? ADMIN_OWNER_ID;
+    const unique = owners.filter((o, i) => owners.findIndex((x) => x.id === o.id) === i);
+    const primary = unique.find((o) => o.id === existing.organizerId) ?? unique[0] ?? null;
     const updates: Partial<TournamentData> = {
-      organizerId: ownerId,
-      organizerName: owner?.displayName ?? ADMIN_OWNER_NAME,
-      managerIds: (existing.managerIds ?? []).filter((managerId) => managerId !== ownerId),
+      organizerId: primary?.id ?? ADMIN_OWNER_ID,
+      organizerName: primary?.displayName ?? ADMIN_OWNER_NAME,
+      managerIds: unique.filter((o) => o.id !== primary?.id).map((o) => o.id),
       updatedAt: Date.now(),
     };
     await this.firestore.updateDoc(ref, updates);

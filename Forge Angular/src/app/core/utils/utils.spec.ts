@@ -760,7 +760,7 @@ describe('free-for-all rounds', () => {
   });
 
   it('knows when registration has not opened yet', () => {
-    const now = Date.UTC(2026, 9, 21, 12, 0);
+    const now = Date.now();
     const base = {
       title: 'T',
       game: 'Carrom',

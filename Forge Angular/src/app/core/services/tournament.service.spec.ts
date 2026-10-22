@@ -333,19 +333,28 @@ describe('TournamentService.replaceParticipant', () => {
     expect((await service.register('t1', 'Hal', 'Ida')).ok).toBe(true);
   });
 
-  it('lets only an admin assign a tournament to an organizer and take it back', async () => {
-    store.data['managerIds'] = ['o9', 'o1'];
+  it('lets only an admin assign several organizers to a tournament and take them back', async () => {
+    store.data['managerIds'] = ['o9'];
     const bella = { id: 'o1', displayName: 'Bella' };
-    expect(await service.assign('t1', bella, organizer)).toBeNull();
+    const ben = { id: 'o2', displayName: 'Ben' };
+    expect(await service.assign('t1', [bella, ben], organizer)).toBeNull();
     expect(store.updates.length).toBe(0);
 
-    const assigned = await service.assign('t1', bella, admin);
-    expect(assigned).toMatchObject({ organizerId: 'o1', organizerName: 'Bella' });
-    expect(assigned?.managerIds).toEqual(['o9']);
-    expect(store.updates.at(-1)).toMatchObject({ organizerId: 'o1', organizerName: 'Bella' });
+    const both = await service.assign('t1', [bella, ben, bella], admin);
+    expect(both).toMatchObject({ organizerId: 'o1', organizerName: 'Bella' });
+    expect(both?.managerIds).toEqual(['o2']);
+    expect(store.updates.at(-1)).toMatchObject({ organizerId: 'o1', managerIds: ['o2'] });
 
-    const removed = await service.assign('t1', null, admin);
-    expect(removed).toMatchObject({ organizerId: 'admin', organizerName: 'Admin' });
+    store.data['organizerId'] = 'o1';
+    const keepsOwner = await service.assign('t1', [ben, bella], admin);
+    expect(keepsOwner).toMatchObject({ organizerId: 'o1', organizerName: 'Bella' });
+    expect(keepsOwner?.managerIds).toEqual(['o2']);
+
+    const onlyBen = await service.assign('t1', [ben], admin);
+    expect(onlyBen).toMatchObject({ organizerId: 'o2', organizerName: 'Ben', managerIds: [] });
+
+    const removed = await service.assign('t1', [], admin);
+    expect(removed).toMatchObject({ organizerId: 'admin', organizerName: 'Admin', managerIds: [] });
   });
 
   it('drops a deleted organizer from every co-manager list', async () => {

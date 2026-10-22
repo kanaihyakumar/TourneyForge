@@ -11,24 +11,23 @@ import {
   untracked,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ADMIN_OWNER_ID, ADMIN_OWNER_NAME } from '../../core/config/constants';
+import { ADMIN_OWNER_NAME } from '../../core/config/constants';
 import { Organizer, Tournament } from '../../core/models/models';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
 import { TournamentService } from '../../core/services/tournament.service';
-import { Select } from '../../shared/forms/select';
+import { Checkbox } from '../../shared/forms/checkbox';
 import { Button } from '../../shared/ui/button';
-import { Field } from '../../shared/ui/field';
 import { Modal } from '../../shared/ui/modal';
 
 @Component({
   selector: 'tf-assign-modal',
-  imports: [FormsModule, Modal, Field, Select, Button],
+  imports: [FormsModule, Modal, Checkbox, Button],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <tf-modal
-      title="👤 Assign tournament"
-      [maxWidth]="460"
+      title="👤 Assign organizers"
+      [maxWidth]="480"
       [open]="!!tournament()"
       (openChange)="onOpenChange($event)"
     >
@@ -37,26 +36,37 @@ import { Modal } from '../../shared/ui/modal';
           <p class="line">
             <strong>{{ t.title }}</strong>
           </p>
-          <p class="field-note">
-            Currently assigned to
-            <strong>{{ assignedName() }}</strong
-            >.
-            @if (!assignedToAdmin()) {
-              They can see and manage it from their dashboard.
-            }
-          </p>
           @if (organizers().length) {
-            <tf-field label="Assign to organizer" for="assignOwner">
-              <tf-select
-                inputId="assignOwner"
-                [options]="options()"
-                [ngModel]="choice()"
-                (ngModelChange)="choice.set($event)"
-              />
-            </tf-field>
+            <p class="field-note">
+              Tick every organizer who should have this tournament. Each one sees it and can manage
+              it from their own dashboard.
+            </p>
+            <div class="cluster">
+              @for (organizer of organizers(); track organizer.id) {
+                <tf-checkbox
+                  variant="chip"
+                  [ngModel]="isSelected(organizer.id)"
+                  [ngModelOptions]="{ standalone: true }"
+                  (ngModelChange)="toggle(organizer.id, $event)"
+                >
+                  {{ organizer.displayName }}
+                  @if (organizer.id === primaryId()) {
+                    ⭐
+                  }
+                </tf-checkbox>
+              }
+            </div>
+            @if (selected().length) {
+              <p class="field-note">
+                ⭐ {{ primaryName() }} is the primary organizer and is credited as the host. The
+                others are co-managers.
+              </p>
+            } @else {
+              <p class="field-note">No organizer selected - the tournament belongs to Admin.</p>
+            }
           } @else {
             <p class="field-note">
-              No organizers yet. Create one in the Organizers tab, then assign this tournament.
+              No organizers yet. Create some in the Organizers tab, then assign them here.
             </p>
           }
           <div class="btn-row flush">
@@ -64,27 +74,17 @@ import { Modal } from '../../shared/ui/modal';
               type="button"
               tfButton
               variant="primary"
-              [disabled]="busy() || !canAssign()"
-              (click)="assign()"
+              [disabled]="busy() || !changed()"
+              (click)="save()"
             >
-              ✅ Assign
+              ✅ Save assignment
             </button>
-            @if (!assignedToAdmin()) {
-              <button
-                type="button"
-                tfButton
-                variant="danger"
-                [disabled]="busy()"
-                (click)="remove()"
-              >
-                ➖ Remove assignment
+            @if (selected().length) {
+              <button type="button" tfButton [disabled]="busy()" (click)="clear()">
+                ➖ Remove all
               </button>
             }
           </div>
-          <p class="field-note">
-            Removing the assignment moves the tournament back to Admin. It counts toward the
-            assigned organizer's tournament limit while they own it.
-          </p>
         </div>
       }
     </tf-modal>
@@ -104,60 +104,77 @@ export class AssignModal {
   readonly organizers = input<Organizer[]>([]);
   readonly assigned = output<void>();
 
-  protected readonly choice = signal('');
+  protected readonly selected = signal<string[]>([]);
   protected readonly busy = signal(false);
 
-  protected readonly options = computed(() =>
-    this.organizers().map((o) => ({ value: o.id, label: `${o.displayName} (@${o.username})` })),
-  );
-  protected readonly assignedToAdmin = computed(
-    () => (this.tournament()?.organizerId ?? ADMIN_OWNER_ID) === ADMIN_OWNER_ID,
-  );
-  protected readonly assignedName = computed(() => {
+  protected readonly initial = computed(() => {
     const t = this.tournament();
-    if (!t || this.assignedToAdmin()) return ADMIN_OWNER_NAME;
-    return this.organizers().find((o) => o.id === t.organizerId)?.displayName ?? t.organizerName;
+    if (!t) return [];
+    const ids = new Set(this.organizers().map((o) => o.id));
+    return [t.organizerId, ...t.managerIds].filter(
+      (id, i, all) => ids.has(id) && all.indexOf(id) === i,
+    );
   });
-  protected readonly canAssign = computed(
-    () => !!this.choice() && this.choice() !== this.tournament()?.organizerId,
+  protected readonly primaryId = computed(() => {
+    const picked = this.selected();
+    const owner = this.tournament()?.organizerId;
+    return owner && picked.includes(owner) ? owner : (picked[0] ?? '');
+  });
+  protected readonly primaryName = computed(
+    () => this.organizers().find((o) => o.id === this.primaryId())?.displayName ?? ADMIN_OWNER_NAME,
+  );
+  protected readonly changed = computed(
+    () => [...this.selected()].sort().join('|') !== [...this.initial()].sort().join('|'),
   );
 
   constructor() {
     effect(() => {
-      const t = this.tournament();
-      const list = this.organizers();
-      untracked(() => {
-        const current = list.find((o) => o.id === t?.organizerId);
-        this.choice.set(current?.id ?? list[0]?.id ?? '');
-      });
+      const initial = this.initial();
+      untracked(() => this.selected.set([...initial]));
     });
+  }
+
+  protected isSelected(id: string): boolean {
+    return this.selected().includes(id);
+  }
+
+  protected toggle(id: string, on: boolean): void {
+    this.selected.update((ids) =>
+      on ? (ids.includes(id) ? ids : [...ids, id]) : ids.filter((x) => x !== id),
+    );
   }
 
   protected onOpenChange(open: boolean): void {
     if (!open) this.tournament.set(null);
   }
 
-  protected assign(): void {
-    const owner = this.organizers().find((o) => o.id === this.choice());
-    if (owner) void this.save({ id: owner.id, displayName: owner.displayName });
+  protected clear(): void {
+    this.selected.set([]);
+    void this.persist([]);
   }
 
-  protected remove(): void {
-    void this.save(null);
+  protected save(): void {
+    void this.persist(this.selected());
   }
 
-  private async save(owner: { id: string; displayName: string } | null): Promise<void> {
+  private async persist(ids: string[]): Promise<void> {
     const t = this.tournament();
     if (!t) return;
+    const owners = ids
+      .map((id) => this.organizers().find((o) => o.id === id))
+      .filter((o): o is Organizer => !!o)
+      .map((o) => ({ id: o.id, displayName: o.displayName }));
     this.busy.set(true);
     try {
-      const result = await this.tournaments.assign(t.id, owner, this.auth.session());
+      const result = await this.tournaments.assign(t.id, owners, this.auth.session());
       if (!result) {
         this.toast.show('Could not update the assignment.');
         return;
       }
       this.toast.show(
-        owner ? `Assigned to ${owner.displayName}.` : 'Assignment removed - back to Admin.',
+        owners.length
+          ? `Assigned to ${owners.map((o) => o.displayName).join(', ')}.`
+          : 'Assignment removed - back to Admin.',
       );
       this.tournament.set(null);
       this.assigned.emit();
