@@ -40,6 +40,9 @@ import { Tag } from '../ui/tag';
         }
       }
     }
+    @if (tournament().keyRequired) {
+      <tf-tag>🔑 Key required</tf-tag>
+    }
     @if (tournament().scoring?.enabled) {
       <tf-tag>⭐ Points system</tf-tag>
     }

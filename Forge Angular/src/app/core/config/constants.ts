@@ -90,6 +90,9 @@ export const USAGE_TIMEZONE = 'America/Los_Angeles';
 export const ADMIN_OWNER_ID = 'admin';
 export const ADMIN_OWNER_NAME = 'Admin';
 
+export const REG_KEYS_COLLECTION = 'registrationKeys';
+export const REG_KEY_LENGTH = 5;
+
 export const CONTACT_PLATO_ID = 'Speedy40';
 export const CONTACT_DISCORD_ID = 'speedy_speedy';
 export const DISCORD_ICON = '👾';
@@ -103,7 +106,7 @@ export const CHAT_CONNECT_TIMEOUT_MS = 12_000;
 
 export const LOCKED_NOTICE = `This tournament is published and locked. To change its details, contact Speedy on Plato (platoid: ${CONTACT_PLATO_ID}) or on Discord (${DISCORD_ICON} ${CONTACT_DISCORD_ID}).`;
 
-export const PUBLISH_NOTICE = `Are you sure you want to publish this tournament? Once published it cannot be edited or deleted. To make changes afterwards, contact Speedy on Plato (platoid: ${CONTACT_PLATO_ID}) or on Discord (${DISCORD_ICON} ${CONTACT_DISCORD_ID}).`;
+export const PUBLISH_NOTICE = `Are you sure you want to publish this tournament? Once published it cannot be edited. Only the admin can delete a tournament. To make changes afterwards, contact Speedy on Plato (platoid: ${CONTACT_PLATO_ID}) or on Discord (${DISCORD_ICON} ${CONTACT_DISCORD_ID}).`;
 
 export const LOCK_EXEMPT_FIELDS = [
   'completed',

@@ -5,12 +5,14 @@ import {
   ADMIN_OWNER_NAME,
   DEFAULT_TIMEZONE,
   LOCK_EXEMPT_FIELDS,
+  REG_KEYS_COLLECTION,
   STORAGE_KEYS,
 } from '../config/constants';
 import { formatWithZone } from '../utils/time';
 import {
   BulkAddResult,
   ClearOptions,
+  CreatedTournament,
   ForgeState,
   Registration,
   RegistrationResult,
@@ -28,6 +30,8 @@ import {
   capacityFor,
   cleanList,
   cleanWinners,
+  normalizeRegistrationKey,
+  randomRegistrationKey,
   findDuplicateRegistration,
   registrationLabel,
   sortTournaments,
@@ -101,6 +105,52 @@ export class TournamentService {
     return doc(this.firestore.db, 'tournaments', id);
   }
 
+  private keyRef(id: string) {
+    return doc(this.firestore.db, REG_KEYS_COLLECTION, id);
+  }
+
+  private async uniqueKey(): Promise<string> {
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const key = randomRegistrationKey();
+      const clash = await this.firestore.getDocs(
+        query(collection(this.firestore.db, REG_KEYS_COLLECTION), where('key', '==', key)),
+      );
+      if (!clash.docs.length) return key;
+    }
+    throw new Error('Could not generate a unique registration key.');
+  }
+
+  async getKey(id: string, session: Session | null): Promise<string | null> {
+    const snap = await this.firestore.getDoc(this.ref(id));
+    if (!snap.exists()) return null;
+    const data = snap.data() as TournamentData;
+    if (!canManage(session, data)) return null;
+    if (!data.keyRequired) return '';
+    const stored = await this.firestore.getDoc(this.keyRef(id));
+    return stored.exists() ? String(stored.data()['key'] ?? '') : '';
+  }
+
+  async renewKey(id: string, session: Session | null): Promise<string | null> {
+    const ref = this.ref(id);
+    const snap = await this.firestore.getDoc(ref);
+    if (!snap.exists() || !canManage(session, snap.data() as TournamentData)) return null;
+    const key = await this.uniqueKey();
+    await this.firestore.setDoc(this.keyRef(id), { key, createdAt: Date.now() });
+    if (!(snap.data() as TournamentData).keyRequired) {
+      await this.firestore.updateDoc(ref, { keyRequired: true, updatedAt: Date.now() });
+    }
+    return key;
+  }
+
+  async disableKey(id: string, session: Session | null): Promise<boolean> {
+    const ref = this.ref(id);
+    const snap = await this.firestore.getDoc(ref);
+    if (!snap.exists() || !canManage(session, snap.data() as TournamentData)) return false;
+    await this.firestore.updateDoc(ref, { keyRequired: false, updatedAt: Date.now() });
+    await this.firestore.deleteDoc(this.keyRef(id));
+    return true;
+  }
+
   async list(): Promise<Tournament[]> {
     const snap = await this.firestore.getDocs(collection(this.firestore.db, 'tournaments'));
     return sortTournaments(snap.docs.map((d) => withMeta(d.id, d.data() as TournamentData)));
@@ -124,7 +174,7 @@ export class TournamentService {
     return { limit, used, reached: limit > 0 && used >= limit };
   }
 
-  async create(input: TournamentInput, session: Session | null): Promise<Tournament | null> {
+  async create(input: TournamentInput, session: Session | null): Promise<CreatedTournament | null> {
     if (!session) return null;
     if ((await this.quota(session)).reached) {
       throw new TournamentLimitError('Tournament limit reached.');
@@ -159,11 +209,15 @@ export class TournamentService {
       cancelled: false,
       completed: false,
       locked: true,
+      keyRequired: true,
       createdAt: now,
       updatedAt: now,
     };
-    const ref = await this.firestore.addDoc(collection(this.firestore.db, 'tournaments'), payload);
-    return withMeta(ref.id, payload);
+    const key = await this.uniqueKey();
+    const ref = doc(collection(this.firestore.db, 'tournaments'));
+    await this.firestore.setDoc(this.keyRef(ref.id), { key, createdAt: now });
+    await this.firestore.setDoc(ref, payload);
+    return { ...withMeta(ref.id, payload), registrationKey: key };
   }
 
   async update(
@@ -221,11 +275,10 @@ export class TournamentService {
   async remove(id: string, session: Session | null): Promise<boolean> {
     const ref = this.ref(id);
     const snap = await this.firestore.getDoc(ref);
-    if (!snap.exists()) return false;
-    const data = snap.data() as TournamentData;
-    if (!canManage(session, data)) return false;
-    if (session?.role !== 'admin' && data.locked !== false) return false;
+    if (session?.role !== 'admin' || !snap.exists()) return false;
+    const keyed = (snap.data() as TournamentData).keyRequired;
     await this.firestore.deleteDoc(ref);
+    if (keyed) await this.firestore.deleteDoc(this.keyRef(id));
     return true;
   }
 
@@ -298,6 +351,7 @@ export class TournamentService {
     platoId: string,
     partnerPlatoId?: string,
     staff: Session | null = null,
+    registrationKey = '',
   ): Promise<RegistrationResult> {
     const ref = this.ref(id);
     const snap = await this.firestore.getDoc(ref);
@@ -315,6 +369,19 @@ export class TournamentService {
         ? ` It opens ${formatWithZone(Number(data.registrationOpensAt), data.createdTZ || DEFAULT_TIMEZONE)}.`
         : '';
       return { ok: false, message: `Registration hasn't opened yet.${when}` };
+    }
+    if (!staff && data.keyRequired) {
+      const entered = normalizeRegistrationKey(registrationKey);
+      if (!entered) {
+        return { ok: false, message: 'Please enter the registration key your host shared.' };
+      }
+      const stored = await this.firestore.getDoc(this.keyRef(id));
+      if (!stored.exists() || String(stored.data()['key']) !== entered) {
+        return {
+          ok: false,
+          message: 'That registration key is not correct. Ask your host for the right one.',
+        };
+      }
     }
     const who = staff ? 'the' : 'your';
     const registrations = data.registrations || [];

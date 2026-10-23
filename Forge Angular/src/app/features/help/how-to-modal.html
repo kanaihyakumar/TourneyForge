@@ -1,0 +1,54 @@
+<tf-modal title="❓ How to use TourneyForge" [maxWidth]="700" [(open)]="open">
+  @if (open()) {
+    <tf-tabs [tabs]="tabs" [(active)]="tab" />
+    <tf-slideshow [count]="count()" [(index)]="index">
+      @if (tab() === 'app') {
+        @let slide = appSlides[index()];
+        <div class="slide">
+          <div class="meta">
+            <span class="icon" aria-hidden="true">{{ slide.icon }}</span>
+            <div>
+              <h3>{{ index() + 1 }}. {{ slide.title }}</h3>
+              <p class="audience">{{ slide.audience }}</p>
+            </div>
+          </div>
+          <tf-how-to-visual [id]="slide.id" />
+          <ol>
+            @for (step of slide.steps; track $index) {
+              <li>{{ step }}</li>
+            }
+          </ol>
+        </div>
+      } @else {
+        @let guide = groupSlides[index()];
+        <div class="slide group">
+          <div class="meta">
+            <span class="icon" aria-hidden="true">{{ guide.icon }}</span>
+            <div>
+              <h3>{{ index() + 1 }}. {{ guide.title }}</h3>
+              <p class="audience">{{ guide.when }}</p>
+            </div>
+          </div>
+          <ul class="points">
+            @for (point of guide.points; track $index) {
+              <li>{{ point }}</li>
+            }
+          </ul>
+          @if (guide.examples?.length) {
+            <div class="examples">
+              <p class="ex-title">
+                💬 Example message{{ guide.examples!.length === 1 ? '' : 's' }} to share
+              </p>
+              @for (example of guide.examples; track $index) {
+                <div class="ex">
+                  <span class="ex-text">{{ render(example) }}</span>
+                  <tf-chunk-copy [chunks]="[render(example)]" label="Copy" />
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    </tf-slideshow>
+  }
+</tf-modal>

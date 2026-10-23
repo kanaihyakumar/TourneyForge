@@ -28,7 +28,9 @@ import {
   computeStatus,
   findDuplicateRegistration,
   isOpenForRegistration,
+  normalizeRegistrationKey,
   parsePrizes,
+  randomRegistrationKey,
   podiumRows,
   registrationNotOpenYet,
   registrationState,
@@ -50,6 +52,7 @@ import {
   defaultCountdown,
   formatDuration,
   MESSAGE_TEMPLATES,
+  registrationMessage,
   renderMessage,
   slotsLeftText,
 } from './messages';
@@ -359,6 +362,19 @@ describe('suggested messages', () => {
     expect(welcome.text).toContain('Carrom Cup');
     expect(renderMessage(find('get-ready'), vars).text).toContain('starts in 30 mins');
     expect(renderMessage(find('registration'), vars).text).toContain('Only 2 slots left!');
+  });
+
+  it('puts the registration key and site link into the registration message', () => {
+    const keyed = { ...vars, key: '76258', link: 'https://forge.example' };
+    const text = renderMessage(find('registration'), keyed).text;
+    expect(text).toContain('Registration key: 76258');
+    expect(text).toContain('https://forge.example');
+    expect(text).toContain('Carrom Cup');
+    expect(renderMessage(find('registration'), vars).text).not.toContain('key');
+    expect(renderMessage(find('welcome'), keyed).text).not.toContain('76258');
+    const long = { ...keyed, title: 'T'.repeat(400) };
+    expect(renderMessage(find('registration'), long).length).toBeLessThanOrEqual(256);
+    expect(renderMessage(find('registration'), long).text).toContain('76258');
   });
 
   it('drops the group wording when there is no group', () => {
@@ -800,5 +816,40 @@ describe('free-for-all rounds', () => {
     expect(timeUntil(45 * 60000, now)).toBe('45 min');
     expect(timeUntil(135 * 60000, now)).toBe('2h 15m');
     expect(timeUntil(72 * 3600_000, now)).toBe('3 days');
+  });
+
+  it('makes five digit registration keys and reads them forgivingly', () => {
+    const keys = new Set(Array.from({ length: 200 }, () => randomRegistrationKey()));
+    expect(keys.size).toBeGreaterThan(150);
+    keys.forEach((key) => expect(key).toMatch(/^[1-9]\d{4}$/));
+    expect(normalizeRegistrationKey(' 76-258 ')).toBe('76258');
+    expect(normalizeRegistrationKey(undefined)).toBe('');
+    expect(normalizeRegistrationKey('abc')).toBe('');
+  });
+
+  it('builds the ready-to-share registration message with or without a key', () => {
+    const t = {
+      title: 'Demo Cup',
+      groupName: '',
+      startUTC: Date.now() + 3600_000,
+      hosts: ['Speedy'],
+      organizerName: 'Bella',
+      teamCapacity: 32,
+      registeredCount: 30,
+      teamSize: 1 as const,
+    };
+    const withKey = registrationMessage(t, '76258', 'https://forge.example');
+    expect(withKey).toContain('Demo Cup');
+    expect(withKey).toContain('https://forge.example');
+    expect(withKey).toContain('Registration key: 76258');
+    expect(withKey).toContain('Only 2 slots left!');
+    expect(withKey.length).toBeLessThanOrEqual(256);
+
+    const noKey = registrationMessage(t, '', 'https://forge.example');
+    expect(noKey).toContain('Register here: https://forge.example');
+    expect(noKey).not.toContain('key');
+    expect(
+      registrationMessage({ ...t, title: 'T'.repeat(400) }, '76258', 'https://x.io').length,
+    ).toBeLessThanOrEqual(256);
   });
 });

@@ -24,6 +24,7 @@ import { TabItem, Tabs } from '../../shared/ui/tabs';
 import { visibleOrganizers } from '../../core/utils/tournament';
 import { UsageService } from '../../core/services/usage.service';
 import { AssignModal } from './assign-modal';
+import { RegistrationKeyModal } from './registration-key-modal';
 import { ClearDataModal } from './clear-data-modal';
 import { NotificationsPanel } from './notifications-panel';
 import { SupportMessages } from './support-messages';
@@ -53,6 +54,7 @@ const REFRESH_GAP_MS = 15000;
     MessagesModal,
     ClearDataModal,
     AssignModal,
+    RegistrationKeyModal,
     UsagePanel,
     NotificationsPanel,
     SupportMessages,
@@ -94,6 +96,7 @@ export class DashboardPage {
   protected readonly messagesId = signal<string | null>(null);
   protected readonly clearId = signal<string | null>(null);
   protected readonly assigning = signal<Tournament | null>(null);
+  protected readonly keyFor = signal<Tournament | null>(null);
   private readonly usage = inject(UsageService);
   protected readonly quotaLevel = computed(() => {
     this.usage.days();
@@ -105,7 +108,8 @@ export class DashboardPage {
 
   protected tabs(): TabItem[] {
     return [
-      { id: 'tournaments', label: '🏆 Tournaments' },
+      { id: 'tournaments', label: '📋 My Tournaments' },
+      { id: 'create', label: this.editing() ? '✏️ Editing' : '➕ Create' },
       { id: 'organizers', label: '🧑‍💼 Organizers', hidden: !this.auth.canViewOrganizers() },
       { id: 'usage', label: '📊 Usage', hidden: !this.auth.isAdmin() },
       {
@@ -155,11 +159,24 @@ export class DashboardPage {
     const tournament = await this.tournamentService.get(id);
     if (!tournament) return;
     this.editing.set(tournament);
+    this.activeTab.set('create');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  protected startCreate(): void {
+    this.editing.set(null);
+    this.activeTab.set('create');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  protected cancelEdit(): void {
+    this.editing.set(null);
+    this.activeTab.set('tournaments');
   }
 
   protected onTournamentsChanged(): void {
     this.editing.set(null);
+    this.activeTab.set('tournaments');
     this.tournaments.reload();
   }
 

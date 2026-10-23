@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { Session } from '../../core/models/models';
 import { AuthService } from '../../core/services/auth.service';
 import { FirestoreService } from '../../core/services/firestore.service';
+import { ToastService } from '../../core/services/toast.service';
 import { TournamentService } from '../../core/services/tournament.service';
 import { TournamentForm } from './tournament-form';
 
@@ -278,5 +279,27 @@ describe('TournamentForm game options', () => {
     expect(root.textContent).toContain('has to open before the tournament starts');
     await submit();
     expect(create).not.toHaveBeenCalled();
+  });
+
+  it('shows the new registration key when a tournament is published', async () => {
+    create.mockResolvedValue({ registrationKey: '76258' });
+    const fixture = TestBed.createComponent(TournamentForm);
+    const root = fixture.nativeElement as HTMLElement;
+    await fixture.whenStable();
+    const set = (id: string, value: string) => {
+      const el = root.querySelector('#' + id) as HTMLInputElement;
+      el.value = value;
+      el.dispatchEvent(new Event('input'));
+    };
+    set('tf_title', 'Cup');
+    set('tf_announcement', 'Hype');
+    set('tf_date', '2026-01-15');
+    set('tf_time', '10:00');
+    (root.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    const message = TestBed.inject(ToastService).message();
+    expect(message).toContain('Tournament published');
+    expect(message).toContain('Registration key: 76258');
   });
 });

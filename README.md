@@ -40,7 +40,7 @@ npm run deploy
 
 The build is written to `Forge Angular/dist/tourney-forge/browser`, which `firebase.json` serves with every route rewritten to `index.html`.
 
-To also publish the Firestore rules and indexes, run `firebase deploy` from the repository root (without `--only hosting`), or run `npm run deploy:rules` from `Forge Angular`. The organizer-to-admin inbox uses the `inbox` collection, so publish the rules once before using it.
+To also publish the Firestore rules and indexes, run `firebase deploy` from the repository root (without `--only hosting`), or run `npm run deploy:rules` from `Forge Angular`. The organizer-to-admin inbox uses the `inbox` collection, so publish the rules once before using it. Registration keys use the `registrationKeys` collection, so publish the rules before deploying the key feature.
 
 ## Deploy the old plain version (Version 1)
 

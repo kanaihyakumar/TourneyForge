@@ -48,6 +48,21 @@ import { Field } from '../../shared/ui/field';
           one team.
         </p>
       }
+      @if (tournament().keyRequired) {
+        <tf-field label="🔑 Registration key" for="regKeyInput">
+          <tf-input
+            inputId="regKeyInput"
+            placeholder="5-digit key shared by your host"
+            autocomplete="off"
+            required
+            formControlName="regKey"
+          />
+        </tf-field>
+        <p class="field-note">
+          🔑 This tournament needs a registration key. Your host shares it in the group - ask them
+          if you don't have it.
+        </p>
+      }
       <p class="field-note">
         ⚠️ Make sure your Plato ID{{ isTeam() ? ' and your partner’s' : '' }} is correct - if it’s
         wrong, you won’t be selected as part of the tournament.
@@ -76,7 +91,11 @@ export class RegisterForm {
   readonly autofocus = input(false);
   readonly registered = output<void>();
 
-  protected readonly form = inject(FormBuilder).nonNullable.group({ platoId: '', partnerId: '' });
+  protected readonly form = inject(FormBuilder).nonNullable.group({
+    platoId: '',
+    partnerId: '',
+    regKey: '',
+  });
   protected readonly error = signal('');
   protected readonly submitting = signal(false);
   private readonly platoIdField = viewChild<Input>('platoId');
@@ -92,7 +111,7 @@ export class RegisterForm {
   }
 
   protected async submit(): Promise<void> {
-    const { platoId, partnerId } = this.form.getRawValue();
+    const { platoId, partnerId, regKey } = this.form.getRawValue();
     const teamError = this.isTeam() ? this.validateTeam(platoId, partnerId) : '';
     this.error.set(teamError);
     if (teamError) return;
@@ -103,6 +122,8 @@ export class RegisterForm {
         this.tournament().id,
         platoId,
         this.isTeam() ? partnerId : undefined,
+        null,
+        regKey,
       );
       if (result.ok) {
         this.toast.show(result.message);

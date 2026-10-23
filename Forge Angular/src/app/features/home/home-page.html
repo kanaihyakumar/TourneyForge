@@ -10,7 +10,7 @@
 <section>
   <div class="section-head">
     <h2 class="section-title">🔥 Live & Upcoming</h2>
-    <button type="button" tfButton size="sm" (click)="howToOpen.set(true)">❓ How to use</button>
+    <tf-how-to />
   </div>
   @if (tournaments.error()) {
     <p class="empty-note">
@@ -63,7 +63,5 @@
 />
 
 <tf-matches-modal [(tournamentId)]="matchesId" />
-
-<tf-how-to-modal [(open)]="howToOpen" />
 
 <tf-contact-line />

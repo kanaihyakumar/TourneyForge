@@ -1,19 +1,17 @@
 import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
-import {
-  ADMIN_OWNER_ID,
-  ADMIN_OWNER_NAME,
-  DEFAULT_TIMEZONE,
-  LOCKED_NOTICE,
-} from '../../core/config/constants';
+import { ADMIN_OWNER_ID, ADMIN_OWNER_NAME, DEFAULT_TIMEZONE } from '../../core/config/constants';
 import { Organizer, Tournament } from '../../core/models/models';
 import { AuthService } from '../../core/services/auth.service';
 import { ForgeImportService } from '../../core/services/forge-import.service';
+import { ClipboardService } from '../../core/services/clipboard.service';
 import { TimezoneService } from '../../core/services/timezone.service';
 import { ToastService } from '../../core/services/toast.service';
 import { TournamentService } from '../../core/services/tournament.service';
 import { formatWithZone } from '../../core/utils/time';
+import { registrationMessage } from '../../core/utils/messages';
 import { registrationState } from '../../core/utils/tournament';
 import { Button } from '../../shared/ui/button';
+import { HowTo } from '../help/how-to';
 import { Card } from '../../shared/ui/card';
 import { ListRow } from '../../shared/ui/list-row';
 import { Segmented, SegmentOption } from '../../shared/ui/segmented';
@@ -22,9 +20,17 @@ import { Tag } from '../../shared/ui/tag';
 
 @Component({
   selector: 'tf-tournament-list',
-  imports: [Card, ListRow, StatusBadge, Button, Tag, Segmented],
+  imports: [Card, ListRow, StatusBadge, Button, Tag, Segmented, HowTo],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './tournament-list.html',
+  styles: `
+    .aside {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+  `,
 })
 export class TournamentList {
   private readonly tournamentService = inject(TournamentService);
@@ -32,6 +38,7 @@ export class TournamentList {
   protected readonly auth = inject(AuthService);
   protected readonly forge = inject(ForgeImportService);
   private readonly timezone = inject(TimezoneService);
+  private readonly clipboard = inject(ClipboardService);
 
   readonly tournaments = input<Tournament[] | undefined>(undefined);
   readonly organizers = input<Organizer[]>([]);
@@ -42,10 +49,11 @@ export class TournamentList {
   readonly viewMessages = output<string>();
   readonly clearData = output<string>();
   readonly assign = output<Tournament>();
+  readonly create = output<void>();
+  readonly viewKey = output<Tournament>();
   readonly changed = output<void>();
 
   protected readonly busyId = signal<string | null>(null);
-  protected readonly lockedNotice = LOCKED_NOTICE;
 
   protected isLockedFor(t: Tournament): boolean {
     return t.locked && !this.auth.isAdmin();
@@ -102,6 +110,29 @@ export class TournamentList {
     return state === 'ended' ? null : state;
   }
 
+  protected async copyRegistrationMessage(t: Tournament): Promise<void> {
+    this.busyId.set(t.id);
+    try {
+      const key = t.keyRequired
+        ? await this.tournamentService.getKey(t.id, this.auth.session())
+        : '';
+      if (t.keyRequired && !key) {
+        this.toast.show('Could not load the registration key.');
+        return;
+      }
+      await this.clipboard.copy(
+        registrationMessage(t, key ?? '', location.origin),
+        'Registration message copied! Paste it in your group.',
+        'accent',
+      );
+    } catch (err) {
+      this.toast.show('Could not copy the message - check your connection.');
+      console.error(err);
+    } finally {
+      this.busyId.set(null);
+    }
+  }
+
   protected async setRegistration(t: Tournament, mode: string): Promise<void> {
     const patch =
       mode === 'soon'
@@ -121,7 +152,7 @@ export class TournamentList {
           ? 'Registration set to coming soon.'
           : mode === 'closed'
             ? 'Registration closed.'
-            : 'Registration is open!',
+            : 'Registration is open! Tap 📋 Copy registration message to share it.',
       );
       this.changed.emit();
     } catch (err) {
@@ -181,11 +212,7 @@ export class TournamentList {
   }
 
   protected async remove(t: Tournament): Promise<void> {
-    if (this.isLockedFor(t)) {
-      this.toast.show(LOCKED_NOTICE);
-      return;
-    }
-    if (!confirm('Delete this tournament? This cannot be undone.')) return;
+    if (!this.auth.isAdmin() || !confirm('Delete this tournament? This cannot be undone.')) return;
     const removed = await this.tournamentService.remove(t.id, this.auth.session());
     this.changed.emit();
     this.toast.show(removed ? 'Tournament deleted.' : 'Could not delete this tournament.');

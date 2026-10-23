@@ -12,7 +12,9 @@ import { Modal } from '../../shared/ui/modal';
       <div class="stack">
         <p>Are you sure you want to publish this tournament?</p>
         <ul>
-          <li>Once published, it <strong>cannot be edited or deleted</strong>.</li>
+          <li>
+            Once published, it <strong>cannot be edited</strong>, and organizers can't delete it.
+          </li>
           <li>You can still record the winners and closing message afterwards.</li>
           <li>
             To change anything else, contact <strong>Speedy</strong> on Plato (platoid:

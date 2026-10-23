@@ -15,17 +15,22 @@
   }
   <tf-tabs [tabs]="tabs()" [(active)]="activeTab" />
 
-  <section [hidden]="activeTab() !== 'tournaments'">
+  <section [hidden]="activeTab() !== 'create'">
     <tf-tournament-form
       [editing]="editing()"
       [organizers]="organizers.value() ?? []"
       (saved)="onTournamentsChanged()"
-      (cancelEdit)="editing.set(null)"
+      (cancelEdit)="cancelEdit()"
     />
+  </section>
+
+  <section [hidden]="activeTab() !== 'tournaments'">
     <tf-tournament-list
       [tournaments]="tournaments.value()"
       [organizers]="organizers.value() ?? []"
       [error]="tournaments.error() !== undefined"
+      (create)="startCreate()"
+      (viewKey)="keyFor.set($event)"
       (edit)="startEdit($event)"
       (viewParticipants)="participantsId.set($event)"
       (clearData)="clearId.set($event)"
@@ -66,6 +71,7 @@
   }
 
   <tf-clear-data-modal [(tournamentId)]="clearId" (cleared)="tournaments.reload()" />
+  <tf-registration-key-modal [(tournament)]="keyFor" />
   <tf-assign-modal
     [(tournament)]="assigning"
     [organizers]="organizers.value() ?? []"

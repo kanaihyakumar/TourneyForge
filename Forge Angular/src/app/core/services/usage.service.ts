@@ -19,7 +19,7 @@ import { estimateDocBytes } from '../utils/size';
 import { FirestoreService } from './firestore.service';
 
 const EMPTY_DAY: UsageDay = { reads: 0, writes: 0, deletes: 0 };
-const TRACKED_COLLECTIONS = ['tournaments', 'organizers', 'inbox', 'config'];
+const TRACKED_COLLECTIONS = ['tournaments', 'organizers', 'inbox', 'registrationKeys', 'config'];
 
 export type QuotaLevel = 'ok' | 'warn' | 'full';
 

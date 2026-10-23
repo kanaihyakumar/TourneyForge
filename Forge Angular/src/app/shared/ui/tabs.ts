@@ -53,6 +53,24 @@ export interface TabItem {
       margin: 4px 0 18px;
       flex-wrap: wrap;
     }
+
+    @media (max-width: 640px) {
+      .tab-row {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding: 6px 8px 14px;
+        margin: -2px -8px 6px;
+        scrollbar-width: none;
+      }
+
+      .tab-row::-webkit-scrollbar {
+        display: none;
+      }
+
+      .tab-row > * {
+        flex: none;
+      }
+    }
   `,
 })
 export class Tabs {

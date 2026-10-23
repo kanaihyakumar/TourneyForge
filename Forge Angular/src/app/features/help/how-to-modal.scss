@@ -1,0 +1,93 @@
+@use 'mixins' as *;
+
+.slide {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 420px;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.icon {
+  font-size: 1.6rem;
+}
+
+h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+.audience {
+  margin: 2px 0 0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--accent-dark);
+}
+
+ol,
+.points {
+  margin: 0;
+  padding-left: 22px;
+  line-height: 1.6;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-soft);
+}
+
+li {
+  margin-bottom: 6px;
+}
+
+.group {
+  min-height: 380px;
+}
+
+.points {
+  list-style: none;
+  padding-left: 0;
+}
+
+.points li {
+  @include neu-well(3px);
+  padding: 10px 14px;
+  margin: 0 0 10px;
+}
+
+.examples {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ex-title {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.ex {
+  @include neu-surface(3px, var(--radius-md));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+}
+
+.ex-text {
+  flex: 1;
+  min-width: 200px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}

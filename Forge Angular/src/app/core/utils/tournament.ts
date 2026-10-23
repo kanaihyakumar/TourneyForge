@@ -1,4 +1,10 @@
-import { DEFAULT_MEDAL, MEDALS, ONGOING_WINDOW_MS, STATUS_RANK } from '../config/constants';
+import {
+  DEFAULT_MEDAL,
+  MEDALS,
+  ONGOING_WINDOW_MS,
+  REG_KEY_LENGTH,
+  STATUS_RANK,
+} from '../config/constants';
 import {
   Organizer,
   Podium,
@@ -51,6 +57,7 @@ export function withMeta(id: string, data: TournamentData): Tournament {
     registrationOpensAt: Number(data.registrationOpensAt) || 0,
     registrationClosed: !!data.registrationClosed,
     registrationSoon: !!data.registrationSoon,
+    keyRequired: !!data.keyRequired,
     teamSize,
     gameMode: data.gameMode ?? '',
     format: data.format ?? (teamSize === 2 ? '2v2' : '1v1'),
@@ -128,6 +135,18 @@ export function registrationNotOpenYet(
   now = Date.now(),
 ): boolean {
   return t.registrationSoon || t.registrationOpensAt > now;
+}
+
+export function randomRegistrationKey(): string {
+  const low = 10 ** (REG_KEY_LENGTH - 1);
+  const span = 9 * low;
+  const bytes = new Uint32Array(1);
+  crypto.getRandomValues(bytes);
+  return String(low + (bytes[0] % span));
+}
+
+export function normalizeRegistrationKey(value: unknown): string {
+  return String(value ?? '').replace(/\D/g, '');
 }
 
 export type RegistrationState = 'ended' | 'closed' | 'soon' | 'open';

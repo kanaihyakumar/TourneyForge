@@ -1,5 +1,10 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-import { DEMO_PLAYERS, DEMO_TOURNAMENT, HowToVisualId } from '../../core/config/how-to';
+import {
+  DEMO_CONTACT,
+  DEMO_PLAYERS,
+  DEMO_TOURNAMENT,
+  HowToVisualId,
+} from '../../core/config/how-to';
 import { Badge } from '../../shared/ui/badge';
 import { Button } from '../../shared/ui/button';
 import { Tag } from '../../shared/ui/tag';
@@ -15,5 +20,7 @@ export class HowToVisual {
   readonly id = input.required<HowToVisualId>();
 
   protected readonly demo = DEMO_TOURNAMENT;
+  protected readonly contact = DEMO_CONTACT;
   protected readonly players = DEMO_PLAYERS;
+  protected readonly chips = DEMO_PLAYERS.slice(0, 6);
 }

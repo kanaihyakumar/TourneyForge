@@ -38,6 +38,7 @@ import {
 import { computeLeaderboard, DEFAULT_SCORING, scoringGames } from '../../core/utils/scoring';
 import {
   ForgeState,
+  CreatedTournament,
   MixedGameEntry,
   Organizer,
   ScoringConfig,
@@ -500,7 +501,7 @@ export class TournamentForm {
           ? result
             ? 'Tournament updated!'
             : 'Could not update - this tournament is locked or you lack permission.'
-          : 'Tournament published! It’s now live on the home page.',
+          : `Tournament published! It’s now live. Registration key: ${(result as CreatedTournament | null)?.registrationKey ?? ''} - find it any time under 🔑 Key.`,
       );
       if (editing && !result) return;
       this.reset();

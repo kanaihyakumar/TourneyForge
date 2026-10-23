@@ -25,6 +25,10 @@ service cloud.firestore {
       allow read: if true;
       allow write: if true;
     }
+    match /registrationKeys/{tournamentId} {
+      allow read: if true;
+      allow write: if true;
+    }
     match /config/{docId} {
       allow read: if true;
       allow write: if true;

@@ -1,7 +1,8 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { Tournament } from '../../core/models/models';
+import { Session, Tournament } from '../../core/models/models';
+import { AuthService } from '../../core/services/auth.service';
 import { FirestoreService } from '../../core/services/firestore.service';
 import { TournamentService } from '../../core/services/tournament.service';
 import { withMeta } from '../../core/utils/tournament';
@@ -327,36 +328,38 @@ describe('HomePage', () => {
     expect(root.querySelector('tf-register-form')).toBeNull();
   });
 
-  it('opens a how-to slideshow with the registration steps and demo names', async () => {
+  it('shows the How to use button only to a logged in admin or organizer', async () => {
+    const session = signal<Session | null>(null);
+    TestBed.overrideProvider(AuthService, {
+      useValue: {
+        session,
+        isAdmin: signal(false),
+        canViewOrganizers: signal(false),
+        openLogin: vi.fn(),
+        logout: vi.fn(),
+      },
+    });
     const fixture = TestBed.createComponent(HomePage);
     const root = fixture.nativeElement as HTMLElement;
     await fixture.whenStable();
     await fixture.whenStable();
-    expect(root.querySelector('tf-slideshow')).toBeNull();
+    const howTo = () =>
+      Array.from(root.querySelectorAll('button')).find((b) =>
+        b.textContent?.includes('How to use'),
+      );
+    expect(howTo()).toBeUndefined();
 
-    const open = Array.from(root.querySelectorAll('button')).find((b) =>
-      b.textContent?.includes('How to use'),
-    ) as HTMLElement;
-    open.click();
+    session.set({ role: 'organizer', id: 'o1', displayName: 'Bella' });
     await fixture.whenStable();
-    const modal = root.querySelector('tf-how-to-modal') as HTMLElement;
-    expect(modal.textContent).toContain('Create a tournament');
-    expect(modal.textContent).toContain('Demo Cup');
+    expect(howTo()).toBeDefined();
+    howTo()?.click();
+    await fixture.whenStable();
+    expect(root.querySelector('tf-how-to-modal')?.textContent).toContain('Create a tournament');
 
-    (modal.querySelector('[aria-label="Go to slide 2"]') as HTMLElement).click();
+    session.set(null);
     await fixture.whenStable();
-    const text = modal.textContent ?? '';
-    expect(text).toContain('Registration soon');
-    expect(text).toContain('Register');
-    expect(text).toContain('Slots full');
-
-    (modal.querySelector('[aria-label="Go to slide 3"]') as HTMLElement).click();
-    await fixture.whenStable();
-    expect(modal.textContent).toContain('Aiden');
-
-    (modal.querySelector('[aria-label="Close"]') as HTMLElement).click();
-    await fixture.whenStable();
-    expect(root.querySelector('tf-slideshow')).toBeNull();
+    expect(howTo()).toBeUndefined();
+    expect(root.querySelector('tf-how-to-modal')).toBeNull();
   });
 
   it('shows coming soon without a countdown when staff set it manually', async () => {
@@ -378,5 +381,105 @@ describe('HomePage', () => {
     expect(text).not.toContain('Registration opens');
     const labels = Array.from(card.querySelectorAll('button')).map((b) => b.textContent);
     expect(labels.some((l) => l?.includes('Register'))).toBe(false);
+  });
+
+  it('asks for the registration key and sends it with the Plato ID', async () => {
+    const keyed = make('keyed', { keyRequired: true });
+    const register = vi.fn().mockResolvedValue({ ok: true, message: 'Registered!' });
+    TestBed.overrideProvider(TournamentService, {
+      useValue: {
+        list: vi.fn().mockResolvedValue([keyed]),
+        get: vi.fn().mockResolvedValue(keyed),
+        register,
+        myRegistrations: signal<string[]>([]),
+      },
+    });
+    const fixture = TestBed.createComponent(HomePage);
+    const root = fixture.nativeElement as HTMLElement;
+    await fixture.whenStable();
+    await fixture.whenStable();
+    expect(root.querySelector('tf-tour-card')?.textContent).toContain('Key required');
+
+    (
+      Array.from(root.querySelectorAll('tf-tour-card button')).find((b) =>
+        b.textContent?.includes('View details'),
+      ) as HTMLElement
+    ).click();
+    await fixture.whenStable();
+    await fixture.whenStable();
+
+    const set = (id: string, value: string) => {
+      const el = root.querySelector('#' + id) as HTMLInputElement;
+      el.value = value;
+      el.dispatchEvent(new Event('input'));
+    };
+    expect(root.querySelector('tf-register-form')?.textContent).toContain('Registration key');
+    set('platoIdInput', 'Fay');
+    set('regKeyInput', '76258');
+    (root.querySelector('tf-register-form form') as HTMLFormElement).dispatchEvent(
+      new Event('submit'),
+    );
+    await fixture.whenStable();
+    expect(register).toHaveBeenCalledWith('keyed', 'Fay', undefined, null, '76258');
+  });
+
+  it('shows a wrong key message and does not ask for a key when none is needed', async () => {
+    const keyed = make('keyed', { keyRequired: true });
+    const register = vi
+      .fn()
+      .mockResolvedValue({ ok: false, message: 'That registration key is not correct.' });
+    TestBed.overrideProvider(TournamentService, {
+      useValue: {
+        list: vi.fn().mockResolvedValue([keyed]),
+        get: vi.fn().mockResolvedValue(keyed),
+        register,
+        myRegistrations: signal<string[]>([]),
+      },
+    });
+    const fixture = TestBed.createComponent(HomePage);
+    const root = fixture.nativeElement as HTMLElement;
+    await fixture.whenStable();
+    await fixture.whenStable();
+    (
+      Array.from(root.querySelectorAll('tf-tour-card button')).find((b) =>
+        b.textContent?.includes('View details'),
+      ) as HTMLElement
+    ).click();
+    await fixture.whenStable();
+    await fixture.whenStable();
+    (root.querySelector('#platoIdInput') as HTMLInputElement).value = 'Fay';
+    (root.querySelector('#platoIdInput') as HTMLInputElement).dispatchEvent(new Event('input'));
+    (root.querySelector('#regKeyInput') as HTMLInputElement).value = '1';
+    (root.querySelector('#regKeyInput') as HTMLInputElement).dispatchEvent(new Event('input'));
+    (root.querySelector('tf-register-form form') as HTMLFormElement).dispatchEvent(
+      new Event('submit'),
+    );
+    await fixture.whenStable();
+    expect(root.querySelector('tf-register-form')?.textContent).toContain('not correct');
+  });
+
+  it('does not ask for a key when the tournament has none', async () => {
+    const open = make('open');
+    TestBed.overrideProvider(TournamentService, {
+      useValue: {
+        list: vi.fn().mockResolvedValue([open]),
+        get: vi.fn().mockResolvedValue(open),
+        register: vi.fn(),
+        myRegistrations: signal<string[]>([]),
+      },
+    });
+    const plain = TestBed.createComponent(HomePage);
+    const plainRoot = plain.nativeElement as HTMLElement;
+    await plain.whenStable();
+    await plain.whenStable();
+    expect(plainRoot.querySelector('tf-tour-card')?.textContent).not.toContain('Key required');
+    (
+      Array.from(plainRoot.querySelectorAll('tf-tour-card button')).find((b) =>
+        b.textContent?.includes('View details'),
+      ) as HTMLElement
+    ).click();
+    await plain.whenStable();
+    await plain.whenStable();
+    expect(plainRoot.querySelector('#regKeyInput')).toBeNull();
   });
 });

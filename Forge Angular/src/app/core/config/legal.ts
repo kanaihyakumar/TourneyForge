@@ -40,6 +40,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
           'Plato IDs (and a partner’s Plato ID for 2v2 tournaments) that you or a host enter to register for a tournament.',
           'Tournament details written by organizers: titles, announcements, hosts, sponsors, brackets, match results, points and winners.',
           'Organizer and admin account details: display name, username and password, created by an admin or another organizer.',
+          'A registration key for each tournament, which players type in when they register. It is stored separately from the tournament details.',
           'Messages organizers send to the admin from their dashboard, and the admin’s replies. These are stored so both sides can read them later.',
           'Basic usage counters (such as the number of database reads and writes per day) used by the admin to stay within free-tier limits. These do not identify visitors.',
         ],
@@ -82,7 +83,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
       {
         heading: 'Retention and removal',
         paragraphs: [
-          `Tournament data is kept while it is useful to the community. Organizers can clear tournament data, and an admin can delete tournaments. To ask for a Plato ID to be removed or corrected, contact ${contactLine}.`,
+          `Tournament data is kept while it is useful to the community. Only an admin can clear tournament data or delete tournaments. To ask for a Plato ID to be removed or corrected, contact ${contactLine}.`,
         ],
       },
       {
@@ -125,7 +126,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
         heading: 'Organizer and admin accounts',
         paragraphs: [
           'Organizer accounts are created by the admin. Keep your login private and you are responsible for what is published from your account.',
-          'Admins may limit how many tournaments an organizer can create. Once a tournament is published it is locked: its details cannot be edited or deleted by the organizer. To change a published tournament, contact the admin, who can unlock it for editing. After editing, it must be published again.',
+          'Admins may limit how many tournaments an organizer can create. Once a tournament is published it is locked: its details cannot be edited by the organizer. To change a published tournament, contact the admin, who can unlock it for editing. After editing, it must be published again. Organizers cannot delete tournaments; ask the admin if one needs to be removed.',
         ],
       },
       {

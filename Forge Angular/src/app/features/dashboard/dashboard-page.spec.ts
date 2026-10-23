@@ -9,6 +9,7 @@ import { TournamentService } from '../../core/services/tournament.service';
 import { withMeta } from '../../core/utils/tournament';
 import { UsageService } from '../../core/services/usage.service';
 import { InboxService } from '../../core/services/inbox.service';
+import { ClipboardService } from '../../core/services/clipboard.service';
 import { PEER_FACTORY } from '../../core/services/chat-transport';
 import { FakePeerHub } from '../../core/services/testing/fake-peers';
 import { InboxThread } from '../../core/models/models';
@@ -46,6 +47,9 @@ describe('DashboardPage', () => {
   const getForgeState = vi.fn();
   const removeMany = vi.fn();
   const assign = vi.fn();
+  const getKey = vi.fn();
+  const renewKey = vi.fn();
+  const disableKey = vi.fn();
   const loadThreads = vi.fn();
   const loadMine = vi.fn();
   const markRead = vi.fn();
@@ -62,6 +66,9 @@ describe('DashboardPage', () => {
     current = tournament();
     removeMany.mockReset().mockResolvedValue(1);
     assign.mockReset().mockResolvedValue(tournament());
+    getKey.mockReset().mockResolvedValue('76258');
+    renewKey.mockReset().mockResolvedValue('13579');
+    disableKey.mockReset().mockResolvedValue(true);
     loadThreads.mockReset().mockResolvedValue(undefined);
     loadMine.mockReset().mockResolvedValue(undefined);
     markRead.mockReset().mockResolvedValue(undefined);
@@ -129,6 +136,9 @@ describe('DashboardPage', () => {
             getForgeState,
             removeMany,
             assign,
+            getKey,
+            renewKey,
+            disableKey,
           },
         },
         {
@@ -173,7 +183,7 @@ describe('DashboardPage', () => {
     expect(root.textContent).toContain('Carrom Cup');
     expect(root.textContent).toContain('co-managed by Bella');
     expect(root.textContent).toContain('assigned to Admin');
-    expect(root.querySelectorAll('tf-tabs button').length).toBe(4);
+    expect(root.querySelectorAll('tf-tabs button').length).toBe(5);
     expect(root.textContent).toContain('@bella');
   });
 
@@ -302,6 +312,11 @@ describe('DashboardPage', () => {
       },
     });
 
+  const tabButton = (root: HTMLElement, needle: string) =>
+    Array.from(root.querySelectorAll('tf-tabs button')).find((b) =>
+      b.textContent?.includes(needle),
+    ) as HTMLButtonElement | undefined;
+
   const button = (root: HTMLElement, needle: string) =>
     Array.from(root.querySelectorAll('button')).find((b) => b.textContent?.includes(needle)) as
       HTMLButtonElement | undefined;
@@ -314,7 +329,7 @@ describe('DashboardPage', () => {
     await settle(fixture);
 
     expect(root.textContent).toContain('🔒 Published');
-    expect(button(root, 'Delete')?.disabled).toBe(true);
+    expect(button(root, 'Delete')).toBeUndefined();
     expect(button(root, 'Clear data')).toBeUndefined();
     expect(button(root, 'Edit')).toBeUndefined();
     button(root, 'Results')?.click();
@@ -351,7 +366,8 @@ describe('DashboardPage', () => {
 
     const dialog = root.querySelector('tf-publish-confirm-modal [role="dialog"]');
     expect(update).not.toHaveBeenCalled();
-    expect(dialog?.textContent).toContain('cannot be edited or deleted');
+    expect(dialog?.textContent).toContain('cannot be edited');
+    expect(dialog?.textContent).toContain("organizers can't delete it");
     expect(dialog?.textContent).toContain('Speedy40');
 
     button(root, 'Go back')?.click();
@@ -374,7 +390,7 @@ describe('DashboardPage', () => {
     const root = fixture.nativeElement as HTMLElement;
     await settle(fixture);
 
-    expect(button(root, 'Delete')?.disabled).toBe(false);
+    expect(button(root, 'Delete')).toBeDefined();
     expect(button(root, 'Clear data')).toBeDefined();
     button(root, 'Allow editing')?.click();
     await settle(fixture);
@@ -411,7 +427,7 @@ describe('DashboardPage', () => {
     const root = fixture.nativeElement as HTMLElement;
     await settle(fixture);
 
-    (root.querySelectorAll('tf-tabs button')[2] as HTMLElement).click();
+    tabButton(root, 'Usage')?.click();
     await settle(fixture);
     expect(root.querySelector('tf-usage-panel')?.closest('section')?.hidden).toBe(false);
 
@@ -420,8 +436,8 @@ describe('DashboardPage', () => {
     sessionSignal.set({ role: 'organizer', id: 'o2', displayName: 'Bella' });
     await settle(fixture);
 
-    expect(root.querySelector('tf-tournament-form')?.closest('section')?.hidden).toBe(false);
-    expect(root.querySelectorAll('tf-tabs button').length).toBe(2);
+    expect(root.querySelector('tf-tournament-list')?.closest('section')?.hidden).toBe(false);
+    expect(root.querySelectorAll('tf-tabs button').length).toBe(3);
   });
 
   const finishedBracket = {
@@ -502,7 +518,7 @@ describe('DashboardPage', () => {
     const fixture = TestBed.createComponent(DashboardPage);
     const root = fixture.nativeElement as HTMLElement;
     await settle(fixture);
-    (root.querySelectorAll('tf-tabs button')[2] as HTMLElement).click();
+    tabButton(root, 'Usage')?.click();
     await settle(fixture);
 
     const remove = () => button(root, 'Delete selected tournaments completely');
@@ -762,6 +778,16 @@ describe('DashboardPage', () => {
     expect(button(root, 'Assign')).toBeUndefined();
   });
 
+  it('never shows organizers a Delete button, even on an unlocked tournament', async () => {
+    current = tournament({ organizerId: 'o2', organizerName: 'Bella', locked: false });
+    asOrganizer();
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+    expect(button(root, 'Edit')).toBeDefined();
+    expect(button(root, 'Delete')).toBeUndefined();
+  });
+
   it('hides co-managers and owners that no longer exist as organizers', async () => {
     current = tournament({
       organizerId: 'admin',
@@ -787,5 +813,207 @@ describe('DashboardPage', () => {
     const again = TestBed.createComponent(DashboardPage);
     await settle(again);
     expect((again.nativeElement as HTMLElement).textContent).not.toContain('co-managed');
+  });
+
+  it('shows the How to use button on the dashboard for an admin', async () => {
+    const fixture = TestBed.createComponent(DashboardPage);
+    await settle(fixture);
+    const labels = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('tf-how-to button'),
+    ).map((b) => b.textContent?.trim());
+    expect(labels).toEqual(['❓ How to use']);
+  });
+
+  it('shows the How to use button on the dashboard for an organizer', async () => {
+    asOrganizer();
+    const fixture = TestBed.createComponent(DashboardPage);
+    await settle(fixture);
+    const labels = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('tf-how-to button'),
+    ).map((b) => b.textContent?.trim());
+    expect(labels).toEqual(['❓ How to use']);
+  });
+
+  it('opens on My Tournaments, with Create in its own tab', async () => {
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+
+    const tabs = Array.from(root.querySelectorAll('tf-tabs button')).map((b) =>
+      b.textContent?.trim(),
+    );
+    expect(tabs.slice(0, 2)).toEqual(['📋 My Tournaments', '➕ Create']);
+    expect(root.querySelector('tf-tournament-list')?.closest('section')?.hidden).toBe(false);
+    expect(root.querySelector('tf-tournament-form')?.closest('section')?.hidden).toBe(true);
+    expect(root.querySelector('tf-tournament-list')?.textContent).toContain('Carrom Cup');
+
+    button(root, 'New tournament')?.click();
+    await settle(fixture);
+    expect(root.querySelector('tf-tournament-form')?.closest('section')?.hidden).toBe(false);
+    expect(root.querySelector('tf-tournament-list')?.closest('section')?.hidden).toBe(true);
+    expect(tabButton(root, 'Create')?.getAttribute('aria-selected')).toBe('true');
+
+    tabButton(root, 'My Tournaments')?.click();
+    await settle(fixture);
+    expect(root.querySelector('tf-tournament-list')?.closest('section')?.hidden).toBe(false);
+  });
+
+  it('jumps to the Create tab when editing and back to the list on cancel and on save', async () => {
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+    const formHidden = () =>
+      (root.querySelector('tf-tournament-form')?.closest('section') as HTMLElement).hidden;
+
+    button(root, 'Edit')?.click();
+    await settle(fixture);
+    expect(formHidden()).toBe(false);
+    expect(tabButton(root, 'Editing')).toBeDefined();
+    expect((root.querySelector('#tf_title') as HTMLInputElement).value).toBe('Carrom Cup');
+
+    button(root, 'Cancel edit')?.click();
+    await settle(fixture);
+    expect(formHidden()).toBe(true);
+    expect(tabButton(root, 'Create')).toBeDefined();
+    expect(tabButton(root, 'Editing')).toBeUndefined();
+
+    button(root, 'Edit')?.click();
+    await settle(fixture);
+    (root.querySelector('tf-tournament-form form') as HTMLFormElement).dispatchEvent(
+      new Event('submit'),
+    );
+    await settle(fixture);
+    expect(update).toHaveBeenCalled();
+    expect(formHidden()).toBe(true);
+    expect(root.querySelector('tf-tournament-list')?.closest('section')?.hidden).toBe(false);
+  });
+
+  it('lets staff see, copy, renew and turn off the registration key', async () => {
+    current = tournament({ startUTC: Date.now() + 86_400_000, keyRequired: true });
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    asOrganizer();
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+    expect(root.querySelector('tf-tournament-list')?.textContent).toContain('Key');
+
+    button(root, 'Key')?.click();
+    await settle(fixture);
+    const modal = root.querySelector('tf-registration-key-modal') as HTMLElement;
+    expect(getKey).toHaveBeenCalledWith('t1', expect.anything());
+    expect(modal.querySelector('.key')?.textContent?.trim()).toBe('76258');
+    const preview = modal.querySelector('.preview')?.textContent ?? '';
+    expect(preview).toContain('Registration key: 76258');
+    expect(preview).toContain(location.origin);
+    expect(preview).toContain('Carrom Cup');
+    expect(preview.length).toBeLessThanOrEqual(256);
+    expect(button(modal, 'Copy key')).toBeDefined();
+    expect(button(modal, 'Copy registration message')).toBeDefined();
+
+    button(modal, 'New key')?.click();
+    await settle(fixture);
+    expect(renewKey).toHaveBeenCalledWith('t1', expect.anything());
+    expect(modal.querySelector('.key')?.textContent?.trim()).toBe('13579');
+
+    button(modal, 'Turn off key')?.click();
+    await settle(fixture);
+    expect(disableKey).toHaveBeenCalledWith('t1', expect.anything());
+    expect(modal.querySelector('.key')).toBeNull();
+    expect(modal.textContent).toContain('no registration key');
+
+    button(modal, 'Require a key')?.click();
+    await settle(fixture);
+    expect(modal.querySelector('.key')?.textContent?.trim()).toBe('13579');
+    confirmSpy.mockRestore();
+  });
+
+  it('hides the Key button once a tournament is finished', async () => {
+    current = tournament({ completed: true, keyRequired: true });
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+    expect(button(root, 'Key')).toBeUndefined();
+  });
+
+  it('puts the registration key into the Registration open message', async () => {
+    current = tournament({ startUTC: Date.now() + 86_400_000, keyRequired: true });
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+
+    button(root, 'Messages')?.click();
+    await settle(fixture);
+    const modal = root.querySelector('tf-messages-modal') as HTMLElement;
+    const text = (modal.textContent ?? '').replace(/\s+/g, ' ');
+    expect(text).toContain('Registration key: 76258');
+    expect(text).toContain(location.origin);
+  });
+
+  it('copies the registration message in one tap while registration is open', async () => {
+    const copy = vi.fn().mockResolvedValue(undefined);
+    TestBed.overrideProvider(ClipboardService, { useValue: { copy } });
+    current = tournament({ startUTC: Date.now() + 86_400_000, keyRequired: true });
+    asOrganizer();
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+
+    const copyButton = () => button(root, 'Copy registration message');
+    expect(copyButton()).toBeDefined();
+    copyButton()?.click();
+    await settle(fixture);
+    expect(getKey).toHaveBeenCalledWith('t1', expect.anything());
+    const [text, toast] = copy.mock.calls[0];
+    expect(text).toContain('Registration key: 76258');
+    expect(text).toContain('Carrom Cup');
+    expect(text).toContain(location.origin);
+    expect(toast).toContain('Paste it in your group');
+  });
+
+  it('only offers the copy button while registration is open, and works without a key', async () => {
+    const copy = vi.fn().mockResolvedValue(undefined);
+    TestBed.overrideProvider(ClipboardService, { useValue: { copy } });
+    const future = { startUTC: Date.now() + 86_400_000 };
+    current = tournament({ ...future, registrationSoon: true });
+    const soon = TestBed.createComponent(DashboardPage);
+    await settle(soon);
+    expect(button(soon.nativeElement, 'Copy registration message')).toBeUndefined();
+    soon.destroy();
+
+    current = tournament({ ...future, registrationClosed: true });
+    const closed = TestBed.createComponent(DashboardPage);
+    await settle(closed);
+    expect(button(closed.nativeElement, 'Copy registration message')).toBeUndefined();
+    closed.destroy();
+
+    current = tournament({ ...future });
+    const open = TestBed.createComponent(DashboardPage);
+    await settle(open);
+    button(open.nativeElement, 'Copy registration message')?.click();
+    await settle(open);
+    expect(getKey).not.toHaveBeenCalled();
+    expect(copy.mock.calls[0][0]).toContain('Register here:');
+    expect(copy.mock.calls[0][0]).not.toContain('key');
+  });
+
+  it('pins the registration message at the top of the suggested messages', async () => {
+    current = tournament({ startUTC: Date.now() + 86_400_000, keyRequired: true });
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+    button(root, 'Messages')?.click();
+    await settle(fixture);
+    const modal = root.querySelector('tf-messages-modal') as HTMLElement;
+    const headings = Array.from(modal.querySelectorAll('h3.category')).map((h) =>
+      h.textContent?.trim(),
+    );
+    expect(headings[0]).toBe('⭐ Share first - when registration opens');
+    expect(headings[1]).toBe('Greeting');
+    expect(modal.querySelector('.message .text')?.textContent).toContain('Registration key: 76258');
+    expect(
+      Array.from(modal.querySelectorAll('.message .top strong')).filter(
+        (e) => e.textContent?.trim() === 'Registration open',
+      ).length,
+    ).toBe(1);
   });
 });

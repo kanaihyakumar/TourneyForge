@@ -187,6 +187,7 @@ export interface TournamentData {
   locked?: boolean;
   registrationClosed?: boolean;
   registrationSoon?: boolean;
+  keyRequired?: boolean;
   createdAt: number;
   updatedAt: number;
   forgeState?: ForgeState;
@@ -206,6 +207,7 @@ export interface Tournament extends TournamentData {
   locked: boolean;
   registrationClosed: boolean;
   registrationSoon: boolean;
+  keyRequired: boolean;
   registrationOpensAt: number;
   teamSize: TeamSize;
   gameMode: string;
@@ -214,6 +216,10 @@ export interface Tournament extends TournamentData {
   gameSettings: Record<string, string>;
   mixed: MixedGameEntry[];
   teamCapacity: number;
+}
+
+export interface CreatedTournament extends Tournament {
+  registrationKey: string;
 }
 
 export interface OrganizerData {

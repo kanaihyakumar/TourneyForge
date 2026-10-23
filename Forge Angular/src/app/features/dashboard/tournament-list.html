@@ -3,6 +3,12 @@
   title="My Tournaments"
   hint="Manage, view or add participants, or send them straight to the Forge."
 >
+  <div cardAside class="aside">
+    <button type="button" tfButton variant="primary" size="sm" (click)="create.emit()">
+      ➕ New tournament
+    </button>
+    <tf-how-to />
+  </div>
   @if (error()) {
     <p class="empty-note">Couldn’t load tournaments - check your Firebase setup and connection.</p>
   } @else if (tournaments() === undefined) {
@@ -40,6 +46,21 @@
               [disabled]="busyId() === t.id"
               (picked)="setRegistration(t, $event)"
             />
+          }
+          @if (regValue(t) === 'open') {
+            <button
+              type="button"
+              tfButton
+              variant="primary"
+              size="sm"
+              [disabled]="busyId() === t.id"
+              (click)="copyRegistrationMessage(t)"
+            >
+              📋 Copy registration message
+            </button>
+          }
+          @if (regValue(t)) {
+            <button type="button" tfButton size="sm" (click)="viewKey.emit(t)">🔑 Key</button>
           }
           <button type="button" tfButton size="sm" (click)="viewParticipants.emit(t.id)">
             👥 Participants
@@ -84,22 +105,18 @@
               {{ t.locked ? '🔓 Allow editing' : '🔒 Lock' }}
             </button>
           }
-          <button
-            type="button"
-            tfButton
-            variant="danger"
-            size="sm"
-            [disabled]="isLockedFor(t)"
-            [attr.title]="isLockedFor(t) ? lockedNotice : null"
-            (click)="remove(t)"
-          >
-            🗑️ Delete
-          </button>
+          @if (auth.isAdmin()) {
+            <button type="button" tfButton variant="danger" size="sm" (click)="remove(t)">
+              🗑️ Delete
+            </button>
+          }
         </ng-container>
       </tf-list-row>
     }
     @if (!tournaments()?.length) {
-      <p class="empty-note">You haven't created any tournaments yet - use the form above.</p>
+      <p class="empty-note">
+        You haven't created any tournaments yet - press “New tournament” to start.
+      </p>
     }
   }
 </tf-card>

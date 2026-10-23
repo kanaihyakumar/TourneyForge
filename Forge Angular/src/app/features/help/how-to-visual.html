@@ -1,0 +1,175 @@
+@switch (id()) {
+  @case ('create') {
+    <div class="mock" aria-hidden="true">
+      <div class="head">🛠️ Create a Tournament</div>
+      <div class="row" style="--i: 0">
+        <span class="lbl">Title</span><span class="val">{{ demo.title }}</span>
+      </div>
+      <div class="row" style="--i: 1">
+        <span class="lbl">Game</span><span class="val">🎮 {{ demo.game }}</span>
+      </div>
+      <div class="row" style="--i: 2">
+        <span class="lbl">Starts</span><span class="val">{{ demo.when }}</span>
+      </div>
+      <div class="row" style="--i: 3">
+        <span class="lbl">Registration opens</span><span class="val">{{ demo.opens }}</span>
+      </div>
+      <button type="button" tfButton variant="primary" size="sm" tabindex="-1" class="publish">
+        🏆 Publish Tournament
+      </button>
+    </div>
+  }
+  @case ('status') {
+    <div class="mock" aria-hidden="true">
+      <div class="ctl">
+        <div class="segs">
+          <span class="sg">🔔 Soon<span class="win w0 on">🔔 Soon</span></span>
+          <span class="sg">⚔️ Open<span class="win w12 on">⚔️ Open</span></span>
+          <span class="sg">🔒 Closed<span class="win w3 on">🔒 Closed</span></span>
+        </div>
+        <span class="copyBtn win w12">📋 Copy registration message</span>
+      </div>
+      <p class="keyline win w12">
+        📢 Registration is open for {{ demo.title }}! Register here: yoursite.web.app 🔑
+        Registration key: 76258. Only 8 slots left! Hurry up! ⚔️
+      </p>
+      <div class="card">
+        <div class="top">
+          <tf-badge tone="upcoming">🕒 UPCOMING</tf-badge>
+        </div>
+        <h4>{{ demo.title }}</h4>
+        <div class="tags">
+          <tf-tag>🎮 {{ demo.game }}</tf-tag>
+          <tf-tag>⏰ {{ demo.when }}</tf-tag>
+          <span class="counts">
+            <tf-tag class="win w0">👥 0/{{ demo.slots }} participants</tf-tag>
+            <tf-tag class="win w1">👥 17/{{ demo.slots }} participants</tf-tag>
+            <tf-tag class="win w2">👥 {{ demo.slots }}/{{ demo.slots }} participants</tf-tag>
+            <tf-tag class="win w3">👥 24/{{ demo.slots }} participants</tf-tag>
+          </span>
+        </div>
+        <div class="footer">
+          <div class="state win w0">
+            <tf-badge tone="upcoming">🔔 Registration coming soon</tf-badge>
+          </div>
+          <div class="state win w1">
+            <button type="button" tfButton variant="primary" size="sm" tabindex="-1">
+              ⚔️ Register
+            </button>
+          </div>
+          <div class="state win w2">
+            <tf-badge tone="cancelled">Slots full</tf-badge>
+            <small>automatic</small>
+          </div>
+          <div class="state win w3">
+            <tf-badge tone="cancelled">🔒 Registration closed</tf-badge>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+  @case ('participants') {
+    <div class="mock" aria-hidden="true">
+      <div class="head">👥 Participants - {{ demo.title }}</div>
+      <div class="chips">
+        @for (name of chips; track name; let i = $index) {
+          @if (i === 1) {
+            <span class="chip swap">
+              <span class="win swapOld">{{ name }} <i>🔁</i></span>
+              <span class="win swapNew">Mia ✨</span>
+            </span>
+          } @else {
+            <span class="chip">{{ name }} <i>🔁</i></span>
+          }
+        }
+      </div>
+      <div class="actions">
+        <button type="button" tfButton size="sm" tabindex="-1" class="pulse-btn">
+          ➕ Add participant
+        </button>
+        <span class="hint">Tap 🔁 on a name to replace it</span>
+      </div>
+      <p class="note win note">
+        ✅ Replaced &#64;Maya with &#64;Mia in the participants, the bracket and the winners.
+      </p>
+    </div>
+  }
+  @case ('forge') {
+    <div class="mock forge" aria-hidden="true">
+      <div class="opt">☑️ Also generate a 3rd place match (from the two semifinal losers)</div>
+      <div class="bracket">
+        <div class="col">
+          <span class="lbl">Semifinals</span>
+          <div class="match">
+            <span class="p ev e1">{{ players[0] }}</span>
+            <span class="p">{{ players[1] }}</span>
+          </div>
+          <div class="match">
+            <span class="p">{{ players[2] }}</span>
+            <span class="p ev e2">{{ players[3] }}</span>
+          </div>
+        </div>
+        <div class="col sh e3">
+          <span class="lbl">Final</span>
+          <div class="match">
+            <span class="p ev e4">{{ players[0] }}</span>
+            <span class="p">{{ players[3] }}</span>
+          </div>
+          <span class="lbl">3rd place match</span>
+          <div class="match">
+            <span class="p ev e5">{{ players[1] }}</span>
+            <span class="p">{{ players[2] }}</span>
+          </div>
+        </div>
+        <div class="col">
+          <span class="champ sh e6">🏆 {{ players[0] }}</span>
+        </div>
+      </div>
+    </div>
+  }
+  @case ('results') {
+    <div class="mock" aria-hidden="true">
+      <div class="doneRow" style="--i: 0">
+        <button type="button" tfButton variant="primary" size="sm" tabindex="-1" class="publish">
+          ✅ Mark Completed
+        </button>
+        <tf-badge tone="completed">✅ DONE</tf-badge>
+      </div>
+      <div class="msg" style="--i: 1">
+        💌 Thank you for joining the tour! We appreciate every participant. Those who didn't win
+        this time - hope you had fun, maybe next time you'll be the champion! 🎉
+      </div>
+      <div class="podium-row" style="--i: 2">
+        <span>🥇</span><strong>&#64;{{ players[0] }}</strong
+        ><em>🎁 2K coins</em><small>1ST PLACE</small>
+      </div>
+      <div class="ticker">
+        <span class="hof">🏆 HALL OF FAME</span>
+        <div class="viewport">
+          <div class="track">
+            <span
+              >{{ demo.title }} · {{ demo.game }} · 🥇 &#64;{{ players[0] }} 🎁 2K coins · 🥈
+              &#64;{{ players[1] }} ✨ &nbsp;</span
+            >
+            <span
+              >{{ demo.title }} · {{ demo.game }} · 🥇 &#64;{{ players[0] }} 🎁 2K coins · 🥈
+              &#64;{{ players[1] }} ✨ &nbsp;</span
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+  @case ('help') {
+    <div class="mock chat" aria-hidden="true">
+      <div class="bubble me" style="--i: 0">Hi! Could you unlock {{ demo.title }}? 🙏</div>
+      <div class="bubble admin" style="--i: 1">Done ✅ It's open for editing.</div>
+      <div class="bubble me" style="--i: 2">Thank you!</div>
+      <div class="contacts">
+        <tf-tag>🎲 Plato: {{ contact.plato }}</tf-tag>
+        <tf-tag>{{ contact.discordIcon }} Discord: {{ contact.discord }}</tf-tag>
+      </div>
+      <p class="privacy">🔒 Live chats are never saved.</p>
+    </div>
+  }
+}

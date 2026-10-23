@@ -8,11 +8,14 @@ const store = vi.hoisted(() => ({
   updates: [] as Record<string, unknown>[],
   owned: 0,
   managed: [] as Record<string, unknown>[],
+  keys: {} as Record<string, string>,
+  sets: [] as { col: string; id: string; data: Record<string, unknown> }[],
 }));
 
 vi.mock('firebase/firestore', () => ({
-  doc: () => ({}),
-  collection: () => ({}),
+  doc: (target: { col?: string }, col?: string, id?: string) =>
+    col ? { col, id } : { col: target.col, id: 'new-id' },
+  collection: (_db: unknown, col: string) => ({ col }),
   query: () => ({}),
   where: () => ({}),
   getDocs: () =>
@@ -21,14 +24,26 @@ vi.mock('firebase/firestore', () => ({
         ? store.managed.map((data) => ({ id: 't1', data: () => data }))
         : Array.from({ length: store.owned }),
     }),
-  getDoc: () => Promise.resolve({ exists: () => true, id: 't1', data: () => store.data }),
+  getDoc: (ref: { col?: string; id?: string }) =>
+    ref.col === 'registrationKeys'
+      ? Promise.resolve({
+          exists: () => ref.id! in store.keys,
+          data: () => ({ key: store.keys[ref.id!] }),
+        })
+      : Promise.resolve({ exists: () => true, id: 't1', data: () => store.data }),
+  setDoc: (ref: { col: string; id: string }, data: Record<string, unknown>) => {
+    store.sets.push({ col: ref.col, id: ref.id, data });
+    if (ref.col === 'registrationKeys') store.keys[ref.id] = String(data['key']);
+    return Promise.resolve();
+  },
   updateDoc: (_ref: unknown, patch: Record<string, unknown>) => {
     store.updates.push(patch);
     return Promise.resolve();
   },
   addDoc: () => Promise.resolve({ id: 'new' }),
-  deleteDoc: () => {
-    store.updates.push({ deleted: true });
+  deleteDoc: (ref: { col?: string; id?: string }) => {
+    store.updates.push({ deleted: true, col: ref.col });
+    if (ref.col === 'registrationKeys') delete store.keys[ref.id!];
     return Promise.resolve();
   },
   deleteField: () => '__deleted__',
@@ -42,6 +57,8 @@ describe('TournamentService.replaceParticipant', () => {
     store.updates.length = 0;
     store.owned = 0;
     store.managed = [];
+    store.keys = {};
+    store.sets = [];
     store.data = {
       teamSize: 2,
       slots: 8,
@@ -75,6 +92,7 @@ describe('TournamentService.replaceParticipant', () => {
             getDocs: (q: any) => firestore.getDocs(q),
             updateDoc: (ref: any, patch: any) => firestore.updateDoc(ref, patch),
             addDoc: (ref: any, data: any) => firestore.addDoc(ref, data),
+            setDoc: (ref: any, data: any) => firestore.setDoc(ref, data),
             deleteDoc: (ref: any) => firestore.deleteDoc(ref),
           },
         },
@@ -204,7 +222,7 @@ describe('TournamentService.replaceParticipant', () => {
     expect(await service.update('t1', { locked: false, title: 'Edit' }, admin)).not.toBeNull();
   });
 
-  it('only lets an admin delete or unlock, and relocks when an organizer republishes', async () => {
+  it('only lets an admin delete or unlock, even when unlocked, and relocks when an organizer republishes', async () => {
     store.data['locked'] = true;
     expect(await service.remove('t1', organizer)).toBe(false);
     expect(await service.remove('t1', admin)).toBe(true);
@@ -212,7 +230,9 @@ describe('TournamentService.replaceParticipant', () => {
     store.data['locked'] = false;
     const edited = await service.update('t1', { title: 'Edit', locked: true }, organizer);
     expect(edited?.locked).toBe(true);
-    expect(await service.remove('t1', organizer)).toBe(true);
+    store.data['locked'] = false;
+    expect(await service.remove('t1', organizer)).toBe(false);
+    expect(store.updates.filter((patch) => patch['deleted']).length).toBe(1);
   });
 
   it('enforces the tournament limit set for an organizer', async () => {
@@ -361,5 +381,110 @@ describe('TournamentService.replaceParticipant', () => {
     store.managed = [{ managerIds: ['gone', 'o1'] }];
     await service.removeManagerEverywhere('gone');
     expect(store.updates.at(-1)).toEqual({ managerIds: ['o1'] });
+  });
+
+  const newTournament = {
+    title: 'Key Cup',
+    game: 'Carrom',
+    slots: 8,
+    teamSize: 1,
+    announcement: '',
+    details: '',
+    sponsor: '',
+    closingMessage: '',
+    winners: [],
+    hosts: [],
+    startUTC: 1,
+    createdTZ: 'UTC',
+  };
+
+  it('creates a unique 5-digit registration key when a tournament is published', async () => {
+    const created = await service.create(newTournament, organizer);
+    expect(created?.registrationKey).toMatch(/^[1-9]\d{4}$/);
+    expect(created?.keyRequired).toBe(true);
+
+    const keyWrite = store.sets.find((w) => w.col === 'registrationKeys');
+    const tournamentWrite = store.sets.find((w) => w.col === 'tournaments');
+    expect(keyWrite?.id).toBe(tournamentWrite?.id);
+    expect(keyWrite?.data['key']).toBe(created?.registrationKey);
+    expect(tournamentWrite?.data['keyRequired']).toBe(true);
+    expect(JSON.stringify(tournamentWrite?.data)).not.toContain(created!.registrationKey);
+    expect(store.sets.indexOf(keyWrite!)).toBeLessThan(store.sets.indexOf(tournamentWrite!));
+  });
+
+  it('avoids a key another tournament already uses', async () => {
+    store.owned = 1;
+    store.data['maxTournaments'] = 0;
+    await expect(service.create(newTournament, admin)).rejects.toThrow('unique registration key');
+    store.owned = 0;
+    expect(await service.create(newTournament, admin)).not.toBeNull();
+  });
+
+  it('only registers players who give the right key, and never asks staff', async () => {
+    store.data['keyRequired'] = true;
+    store.keys['t1'] = '76258';
+
+    const missing = await service.register('t1', 'Fay', 'Gus');
+    expect(missing.ok).toBe(false);
+    expect(missing.message).toContain('registration key');
+    const wrong = await service.register('t1', 'Fay', 'Gus', null, '11111');
+    expect(wrong.ok).toBe(false);
+    expect(wrong.message).toContain('not correct');
+    expect(store.updates.length).toBe(0);
+
+    const right = await service.register('t1', 'Fay', 'Gus', null, ' 76 258 ');
+    expect(right.ok).toBe(true);
+
+    store.updates.length = 0;
+    expect((await service.addParticipant('t1', 'Hal', 'Ida', admin)).ok).toBe(true);
+
+    store.data['keyRequired'] = false;
+    store.updates.length = 0;
+    expect((await service.register('t1', 'Jon', 'Kay')).ok).toBe(true);
+  });
+
+  it('checks the key before revealing whether slots are full', async () => {
+    store.data['keyRequired'] = true;
+    store.data['slots'] = 4;
+    store.keys['t1'] = '76258';
+    const result = await service.register('t1', 'Fay', 'Gus', null, '00000');
+    expect(result.message).toContain('not correct');
+  });
+
+  it('lets only staff see, renew and turn off the key', async () => {
+    store.data['keyRequired'] = true;
+    store.keys['t1'] = '76258';
+    const stranger = { role: 'organizer' as const, id: 'zzz', displayName: 'Z' };
+
+    expect(await service.getKey('t1', stranger)).toBeNull();
+    expect(await service.getKey('t1', null)).toBeNull();
+    expect(await service.getKey('t1', organizer)).toBe('76258');
+    expect(await service.renewKey('t1', stranger)).toBeNull();
+    expect(await service.disableKey('t1', stranger)).toBe(false);
+    expect(store.updates.length).toBe(0);
+
+    const fresh = await service.renewKey('t1', organizer);
+    expect(fresh).toMatch(/^\d{5}$/);
+    expect(store.keys['t1']).toBe(fresh);
+    expect(await service.getKey('t1', admin)).toBe(fresh);
+
+    expect(await service.disableKey('t1', organizer)).toBe(true);
+    expect(store.updates).toContainEqual(expect.objectContaining({ keyRequired: false }));
+    expect(store.keys['t1']).toBeUndefined();
+  });
+
+  it('adds a key to an older tournament that never had one', async () => {
+    expect(await service.getKey('t1', organizer)).toBe('');
+    const key = await service.renewKey('t1', admin);
+    expect(key).toMatch(/^\d{5}$/);
+    expect(store.updates).toContainEqual(expect.objectContaining({ keyRequired: true }));
+  });
+
+  it('deletes the key together with the tournament', async () => {
+    store.data['keyRequired'] = true;
+    store.keys['t1'] = '76258';
+    expect(await service.remove('t1', admin)).toBe(true);
+    expect(store.updates).toContainEqual({ deleted: true, col: 'registrationKeys' });
+    expect(store.keys['t1']).toBeUndefined();
   });
 });

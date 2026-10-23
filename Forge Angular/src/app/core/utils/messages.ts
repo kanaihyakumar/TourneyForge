@@ -1,3 +1,4 @@
+import { Tournament } from '../models/models';
 import { CHAT_LIMIT } from './bracket';
 
 export type MessageCategory =
@@ -9,6 +10,7 @@ export interface MessageTemplate {
   label: string;
   text: string;
   textNoGroup?: string;
+  textWithKey?: string;
 }
 
 export interface MessageVars {
@@ -17,6 +19,8 @@ export interface MessageVars {
   time: string;
   hosts: string;
   slotsLeft: string;
+  key?: string;
+  link?: string;
 }
 
 export interface RenderedMessage {
@@ -39,7 +43,9 @@ export const MESSAGE_TEMPLATES: MessageTemplate[] = [
     id: 'registration',
     category: 'Greeting',
     label: 'Registration open',
-    text: '📢 Registration is open for {title}! Register on the website with your Plato ID. {slotsLeft} Hurry up! ⚔️',
+    text: '📢 Registration is open for {title}! Register here: {link} with your Plato ID. {slotsLeft} Hurry up! ⚔️',
+    textWithKey:
+      '📢 Registration is open for {title}! Register here: {link} 🔑 Registration key: {key}. {slotsLeft} Hurry up! ⚔️',
   },
   {
     id: 'get-ready',
@@ -121,6 +127,10 @@ const fill = (template: string, vars: MessageVars): string =>
     .join(vars.hosts)
     .split('{slotsLeft}')
     .join(vars.slotsLeft)
+    .split('{key}')
+    .join(vars.key ?? '')
+    .split('{link}')
+    .join(vars.link ?? '')
     .replace(/\s{2,}/g, ' ')
     .replace(/\s+([!?.,])/g, '$1')
     .trim();
@@ -135,7 +145,12 @@ export function renderMessage(
   vars: MessageVars,
   limit = CHAT_LIMIT,
 ): RenderedMessage {
-  const source = !vars.group.trim() && template.textNoGroup ? template.textNoGroup : template.text;
+  const source =
+    vars.key && template.textWithKey
+      ? template.textWithKey
+      : !vars.group.trim() && template.textNoGroup
+        ? template.textNoGroup
+        : template.text;
   const current = { ...vars };
   let text = fill(source, current);
   let truncated = false;
@@ -169,4 +184,32 @@ export function slotsLeftText(capacity: number, registered: number, isTeam: bool
   if (!capacity) return '';
   const left = Math.max(0, capacity - registered);
   return `Only ${left} ${isTeam ? 'team ' : ''}slot${left === 1 ? '' : 's'} left!`;
+}
+
+export function registrationMessage(
+  t: Pick<
+    Tournament,
+    | 'title'
+    | 'groupName'
+    | 'startUTC'
+    | 'hosts'
+    | 'organizerName'
+    | 'teamCapacity'
+    | 'registeredCount'
+    | 'teamSize'
+  >,
+  key: string,
+  link: string,
+): string {
+  const countdown = defaultCountdown(t.startUTC);
+  const template = MESSAGE_TEMPLATES.find((m) => m.id === 'registration') as MessageTemplate;
+  return renderMessage(template, {
+    title: t.title,
+    group: t.groupName ?? '',
+    time: formatDuration(countdown.amount, countdown.unit),
+    hosts: (t.hosts.length ? t.hosts : [t.organizerName || 'the host']).join(', '),
+    slotsLeft: slotsLeftText(t.teamCapacity, t.registeredCount, t.teamSize === 2),
+    key,
+    link,
+  }).text;
 }

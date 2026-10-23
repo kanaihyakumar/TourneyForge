@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CHAT_LIMIT } from '../../core/utils/bracket';
+import { AuthService } from '../../core/services/auth.service';
 import { TournamentService } from '../../core/services/tournament.service';
 import {
   defaultCountdown,
@@ -149,6 +150,7 @@ const UNIT_OPTIONS = [
 })
 export class MessagesModal {
   private readonly tournaments = inject(TournamentService);
+  private readonly auth = inject(AuthService);
 
   readonly tournamentId = model<string | null>(null);
 
@@ -162,6 +164,16 @@ export class MessagesModal {
     params: () => this.tournamentId() ?? undefined,
     loader: ({ params }) => this.tournaments.get(params),
   });
+  protected readonly key = resource({
+    params: () => this.tournamentId() ?? undefined,
+    loader: async ({ params }) => {
+      try {
+        return (await this.tournaments.getKey(params, this.auth.session())) ?? '';
+      } catch {
+        return '';
+      }
+    },
+  });
   protected readonly open = computed(() => !!this.tournamentId() && !!this.tournament.value());
 
   protected readonly grouped = computed(() => {
@@ -173,6 +185,8 @@ export class MessagesModal {
       time: formatDuration(Number(this.amount()), this.unit() === 'hours' ? 'hours' : 'mins'),
       hosts: (t.hosts.length ? t.hosts : [t.organizerName || 'the host']).join(', '),
       slotsLeft: slotsLeftText(t.teamCapacity, t.registeredCount, t.teamSize === 2),
+      key: this.key.hasValue() ? this.key.value() : '',
+      link: location.origin,
     };
     const order: MessageCategory[] = [
       'Greeting',
@@ -181,13 +195,22 @@ export class MessagesModal {
       'Crowd control',
       'Wrap up',
     ];
-    return order.map((category) => ({
-      category,
-      items: MESSAGE_TEMPLATES.filter((m) => m.category === category).map((m) => ({
-        ...m,
-        rendered: renderMessage(m, vars),
-      })),
-    }));
+    const sections: { category: string; items: ReturnType<typeof withRendered> }[] = [];
+    const withRendered = (list: typeof MESSAGE_TEMPLATES) =>
+      list.map((m) => ({ ...m, rendered: renderMessage(m, vars) }));
+    sections.push({
+      category: '⭐ Share first - when registration opens',
+      items: withRendered(MESSAGE_TEMPLATES.filter((m) => m.id === 'registration')),
+    });
+    for (const category of order) {
+      sections.push({
+        category,
+        items: withRendered(
+          MESSAGE_TEMPLATES.filter((m) => m.category === category && m.id !== 'registration'),
+        ),
+      });
+    }
+    return sections;
   });
 
   constructor() {
