@@ -157,6 +157,19 @@ export function registrationState(t: Tournament, now = Date.now()): Registration
   return registrationNotOpenYet(t, now) ? 'soon' : 'open';
 }
 
+export function isFinished(
+  t: { completed?: boolean; cancelled?: boolean } | null | undefined,
+): boolean {
+  return !!t && !!(t.completed || t.cancelled);
+}
+
+export function isViewOnlyFor(
+  session: Session | null,
+  t: { completed?: boolean; cancelled?: boolean } | null | undefined,
+): boolean {
+  return isFinished(t) && session?.role !== 'admin';
+}
+
 export function isOpenForRegistration(t: Tournament, now = Date.now()): boolean {
   return registrationState(t, now) === 'open';
 }

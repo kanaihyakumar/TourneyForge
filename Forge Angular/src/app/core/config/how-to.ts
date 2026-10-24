@@ -93,7 +93,7 @@ export const HOW_TO_SLIDES: HowToSlide[] = [
     audience: 'For organizers',
     steps: [
       'When the last match is done, open ✏️ Edit (or 🏅 Results on a locked tournament) and press “Pull winners from Match Bracket / points”. Prizes are filled in from your announcement where they can be.',
-      'Press ✅ Mark Completed. The card moves to Completed and the winners scroll across the Hall of Fame.',
+      'Press ✅ Mark Completed. The card moves to Completed and the winners scroll across the Hall of Fame. A completed tournament is view-only for organizers (participants, Forge and results can be viewed), so check everything first. To reopen one, contact Speedy.',
       'Open 💬 Messages for ready-made posts, including the closing message. Copy it in pieces that fit the chat and send it to the group.',
     ],
   },

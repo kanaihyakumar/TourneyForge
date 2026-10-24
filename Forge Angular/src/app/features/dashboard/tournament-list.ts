@@ -1,5 +1,10 @@
 import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
-import { ADMIN_OWNER_ID, ADMIN_OWNER_NAME, DEFAULT_TIMEZONE } from '../../core/config/constants';
+import {
+  ADMIN_OWNER_ID,
+  ADMIN_OWNER_NAME,
+  DEFAULT_TIMEZONE,
+  FINISHED_NOTICE,
+} from '../../core/config/constants';
 import { Organizer, Tournament } from '../../core/models/models';
 import { AuthService } from '../../core/services/auth.service';
 import { ForgeImportService } from '../../core/services/forge-import.service';
@@ -9,7 +14,7 @@ import { ToastService } from '../../core/services/toast.service';
 import { TournamentService } from '../../core/services/tournament.service';
 import { formatWithZone } from '../../core/utils/time';
 import { registrationMessage } from '../../core/utils/messages';
-import { registrationState } from '../../core/utils/tournament';
+import { isViewOnlyFor, registrationState } from '../../core/utils/tournament';
 import { Button } from '../../shared/ui/button';
 import { HowTo } from '../help/how-to';
 import { Card } from '../../shared/ui/card';
@@ -56,7 +61,11 @@ export class TournamentList {
   protected readonly busyId = signal<string | null>(null);
 
   protected isLockedFor(t: Tournament): boolean {
-    return t.locked && !this.auth.isAdmin();
+    return (t.locked || this.viewOnly(t)) && !this.auth.isAdmin();
+  }
+
+  protected viewOnly(t: Tournament): boolean {
+    return isViewOnlyFor(this.auth.session(), t);
   }
 
   protected async toggleLock(t: Tournament): Promise<void> {
@@ -189,6 +198,10 @@ export class TournamentList {
   }
 
   protected async toggleCompleted(t: Tournament): Promise<void> {
+    if (this.viewOnly(t)) {
+      this.toast.show(FINISHED_NOTICE);
+      return;
+    }
     const nextCompleted = !t.completed;
     this.busyId.set(t.id);
     try {

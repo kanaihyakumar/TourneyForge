@@ -531,4 +531,74 @@ describe('ForgePage', () => {
     expect(stages[1].textContent).toContain('Round 2 · Ocho');
     expect(root.querySelector('.round-winners')?.textContent).toContain('Round 1');
   });
+
+  const organizerSession = { role: 'organizer', id: 'o1', displayName: 'Bella', loginAt: 1 };
+  const finishedTournament = () =>
+    withMeta('t1', {
+      title: 'Cup',
+      game: 'Carrom',
+      slots: 8,
+      announcement: '',
+      details: '',
+      prizeText: '',
+      sponsor: '',
+      startUTC: Date.now() - 86_400_000,
+      createdTZ: 'UTC',
+      organizerId: 'o1',
+      organizerName: 'Bella',
+      completed: true,
+      registrations: ['a', 'b', 'c', 'd'].map((platoId) => ({ platoId, registeredAt: 1 })),
+      createdAt: 0,
+      updatedAt: 0,
+    });
+
+  it('shows a finished tournament as view-only to its organizer', async () => {
+    localStorage.setItem('tf_session_v1', JSON.stringify(organizerSession));
+    try {
+      current = finishedTournament();
+      const fixture = TestBed.createComponent(ForgePage);
+      const root = fixture.nativeElement as HTMLElement;
+      await fixture.whenStable();
+      await fixture.whenStable();
+
+      expect(root.textContent).toContain('view-only for organizers');
+      expect(root.textContent).toContain('contact Speedy');
+      const labels = Array.from(root.querySelectorAll('button')).map((b) => b.textContent);
+      expect(labels.some((l) => l?.includes('Start Bracket'))).toBe(false);
+      expect(labels.some((l) => l?.includes('Add participant'))).toBe(false);
+      expect(root.querySelector('.replace')).toBeNull();
+
+      const store = fixture.debugElement.injector.get(ForgeStore);
+      expect(store.viewOnly()).toBe(true);
+      store.startBracket();
+      expect(store.stages().length).toBe(0);
+      expect(saveForgeState).not.toHaveBeenCalled();
+    } finally {
+      localStorage.removeItem('tf_session_v1');
+    }
+  });
+
+  it('lets the admin keep working on a finished tournament', async () => {
+    localStorage.setItem(
+      'tf_session_v1',
+      JSON.stringify({ role: 'admin', id: 'admin', displayName: 'Admin', loginAt: 1 }),
+    );
+    try {
+      current = finishedTournament();
+      const fixture = TestBed.createComponent(ForgePage);
+      const root = fixture.nativeElement as HTMLElement;
+      await fixture.whenStable();
+      await fixture.whenStable();
+
+      expect(root.textContent).not.toContain('view-only for organizers');
+      const labels = Array.from(root.querySelectorAll('button')).map((b) => b.textContent);
+      expect(labels.some((l) => l?.includes('Start Bracket'))).toBe(true);
+      const store = fixture.debugElement.injector.get(ForgeStore);
+      expect(store.viewOnly()).toBe(false);
+      store.startBracket();
+      expect(store.stages().length).toBe(1);
+    } finally {
+      localStorage.removeItem('tf_session_v1');
+    }
+  });
 });

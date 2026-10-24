@@ -14,6 +14,7 @@ import { chunkText } from '../../core/utils/bracket';
 import { formatPlatoId } from '../../core/utils/plato';
 import { podiumRows } from '../../core/utils/tournament';
 import { ContactLine } from '../../layout/contact-line';
+import { FINISHED_NOTICE } from '../../core/config/constants';
 import { ThanksNote } from '../../shared/tournament/thanks-note';
 import { CreditLine } from '../../layout/credit-line';
 import { PageHeader } from '../../layout/page-header';
@@ -65,6 +66,8 @@ import { ForgeStore } from './forge-store';
   styleUrl: './forge-page.scss',
 })
 export class ForgePage {
+  protected readonly finishedNotice = FINISHED_NOTICE;
+
   private readonly clipboard = inject(ClipboardService);
   protected readonly store = inject(ForgeStore);
 

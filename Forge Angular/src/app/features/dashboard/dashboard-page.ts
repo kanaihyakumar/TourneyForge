@@ -23,6 +23,7 @@ import { Card } from '../../shared/ui/card';
 import { TabItem, Tabs } from '../../shared/ui/tabs';
 import { visibleOrganizers } from '../../core/utils/tournament';
 import { UsageService } from '../../core/services/usage.service';
+import { ThanksNote } from '../../shared/tournament/thanks-note';
 import { AssignModal } from './assign-modal';
 import { RegistrationKeyModal } from './registration-key-modal';
 import { ClearDataModal } from './clear-data-modal';
@@ -54,6 +55,7 @@ const REFRESH_GAP_MS = 15000;
     MessagesModal,
     ClearDataModal,
     AssignModal,
+    ThanksNote,
     RegistrationKeyModal,
     UsagePanel,
     NotificationsPanel,

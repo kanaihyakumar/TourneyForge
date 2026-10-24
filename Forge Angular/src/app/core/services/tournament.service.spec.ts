@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import * as firestore from 'firebase/firestore';
 import { FirestoreService } from './firestore.service';
-import { TournamentLimitError, TournamentService } from './tournament.service';
+import { SessionEndedError, TournamentLimitError, TournamentService } from './tournament.service';
 
 const store = vi.hoisted(() => ({
   data: {} as Record<string, unknown>,
@@ -9,6 +9,9 @@ const store = vi.hoisted(() => ({
   owned: 0,
   managed: [] as Record<string, unknown>[],
   keys: {} as Record<string, string>,
+  removed: [] as string[],
+  signOutAt: 0,
+  shared: [] as string[],
   sets: [] as { col: string; id: string; data: Record<string, unknown> }[],
 }));
 
@@ -16,21 +19,31 @@ vi.mock('firebase/firestore', () => ({
   doc: (target: { col?: string }, col?: string, id?: string) =>
     col ? { col, id } : { col: target.col, id: 'new-id' },
   collection: (_db: unknown, col: string) => ({ col }),
-  query: () => ({}),
-  where: () => ({}),
-  getDocs: () =>
+  query: (_col: unknown, w?: { field?: string }) => ({ field: w?.field }),
+  where: (field: string) => ({ field }),
+  getDocs: (q?: { field?: string }) =>
     Promise.resolve({
-      docs: store.managed.length
-        ? store.managed.map((data) => ({ id: 't1', data: () => data }))
-        : Array.from({ length: store.owned }),
+      docs:
+        q?.field === 'managerIds' && store.shared.length
+          ? store.shared.map((id) => ({ id, data: () => ({}) }))
+          : store.managed.length
+            ? store.managed.map((data) => ({ id: 't1', data: () => data }))
+            : Array.from({ length: store.owned }, (_, i) => ({ id: 'owned-' + i })),
     }),
   getDoc: (ref: { col?: string; id?: string }) =>
-    ref.col === 'registrationKeys'
-      ? Promise.resolve({
-          exists: () => ref.id! in store.keys,
-          data: () => ({ key: store.keys[ref.id!] }),
-        })
-      : Promise.resolve({ exists: () => true, id: 't1', data: () => store.data }),
+    ref.col === 'organizers' && store.removed.includes(ref.id!)
+      ? Promise.resolve({ exists: () => false, data: () => undefined })
+      : ref.col === 'config' && ref.id === 'session'
+        ? Promise.resolve({
+            exists: () => store.signOutAt > 0,
+            data: () => ({ organizersLoggedOutAt: store.signOutAt }),
+          })
+        : ref.col === 'registrationKeys'
+          ? Promise.resolve({
+              exists: () => ref.id! in store.keys,
+              data: () => ({ key: store.keys[ref.id!] }),
+            })
+          : Promise.resolve({ exists: () => true, id: 't1', data: () => store.data }),
   setDoc: (ref: { col: string; id: string }, data: Record<string, unknown>) => {
     store.sets.push({ col: ref.col, id: ref.id, data });
     if (ref.col === 'registrationKeys') store.keys[ref.id] = String(data['key']);
@@ -59,6 +72,9 @@ describe('TournamentService.replaceParticipant', () => {
     store.managed = [];
     store.keys = {};
     store.sets = [];
+    store.removed = [];
+    store.signOutAt = 0;
+    store.shared = [];
     store.data = {
       teamSize: 2,
       slots: 8,
@@ -486,5 +502,81 @@ describe('TournamentService.replaceParticipant', () => {
     expect(await service.remove('t1', admin)).toBe(true);
     expect(store.updates).toContainEqual({ deleted: true, col: 'registrationKeys' });
     expect(store.keys['t1']).toBeUndefined();
+  });
+
+  it('stops a removed organizer from creating or changing anything', async () => {
+    store.removed = ['o1'];
+    await expect(service.create(newTournament, organizer)).rejects.toBeInstanceOf(
+      SessionEndedError,
+    );
+    expect(store.sets.length).toBe(0);
+
+    store.data['locked'] = false;
+    expect(await service.update('t1', { title: 'X' }, organizer)).toBeNull();
+    expect(await service.saveForgeState('t1', { members: [] } as never, organizer)).toBe(false);
+    expect((await service.addParticipant('t1', 'Fay', 'Gus', organizer)).ok).toBe(false);
+    expect(store.updates.length).toBe(0);
+    expect(await service.update('t1', { title: 'Admin edit' }, admin)).not.toBeNull();
+  });
+
+  it('stops organizers whose session started before the admin logged everyone out', async () => {
+    store.signOutAt = 5000;
+    const old = { ...organizer, loginAt: 4000 };
+    await expect(service.create(newTournament, old)).rejects.toBeInstanceOf(SessionEndedError);
+
+    const fresh = { ...organizer, loginAt: 6000 };
+    expect(await service.create(newTournament, fresh)).not.toBeNull();
+    const legacy = { ...organizer, id: 'o9' };
+    await expect(service.create(newTournament, legacy)).rejects.toBeInstanceOf(SessionEndedError);
+  });
+
+  it('counts tournaments shared with an organizer toward their limit, once each', async () => {
+    store.data['maxTournaments'] = 1;
+    store.shared = ['t9'];
+    const quota = await service.quota(organizer);
+    expect(quota).toEqual({ limit: 1, used: 1, reached: true });
+    await expect(service.create(newTournament, organizer)).rejects.toBeInstanceOf(
+      TournamentLimitError,
+    );
+
+    store.owned = 1;
+    store.shared = ['owned-0'];
+    expect((await service.quota(organizer)).used).toBe(1);
+
+    store.shared = ['t9', 't10'];
+    expect((await service.quota(organizer)).used).toBe(3);
+  });
+
+  const finish = (flag: 'completed' | 'cancelled') => {
+    store.data['locked'] = false;
+    store.data[flag] = true;
+  };
+
+  it('makes finished tournaments view-only for organizers, but not for the admin', async () => {
+    for (const flag of ['completed', 'cancelled'] as const) {
+      store.updates.length = 0;
+      finish(flag);
+      expect(await service.update('t1', { completed: false }, organizer)).toBeNull();
+      expect(
+        await service.update('t1', { winners: [], closingMessage: 'GG' }, organizer),
+      ).toBeNull();
+      expect(await service.saveForgeState('t1', { members: [] } as never, organizer)).toBe(false);
+      const added = await service.addParticipant('t1', 'Fay', 'Gus', organizer);
+      expect(added.ok).toBe(false);
+      expect(added.message).toContain('contact Speedy');
+      const replaced = await service.replaceParticipant('t1', 0, 'Alice', 'Eve', organizer);
+      expect(replaced.ok).toBe(false);
+      expect(replaced.message).toContain('contact Speedy');
+      expect(store.updates.length).toBe(0);
+
+      expect(await service.update('t1', { completed: false }, admin)).not.toBeNull();
+      expect(await service.saveForgeState('t1', { members: [] } as never, admin)).toBe(true);
+      delete store.data[flag];
+    }
+  });
+
+  it('still lets an organizer mark a running tournament completed', async () => {
+    store.data['locked'] = false;
+    expect(await service.update('t1', { completed: true }, organizer)).not.toBeNull();
   });
 });

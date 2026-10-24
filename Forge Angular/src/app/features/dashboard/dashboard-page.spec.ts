@@ -10,6 +10,7 @@ import { withMeta } from '../../core/utils/tournament';
 import { UsageService } from '../../core/services/usage.service';
 import { InboxService } from '../../core/services/inbox.service';
 import { ClipboardService } from '../../core/services/clipboard.service';
+import { ToastService } from '../../core/services/toast.service';
 import { PEER_FACTORY } from '../../core/services/chat-transport';
 import { FakePeerHub } from '../../core/services/testing/fake-peers';
 import { InboxThread } from '../../core/models/models';
@@ -47,6 +48,8 @@ describe('DashboardPage', () => {
   const getForgeState = vi.fn();
   const removeMany = vi.fn();
   const assign = vi.fn();
+  const logoutAllOrganizers = vi.fn();
+  const changeAdminPassword = vi.fn();
   const getKey = vi.fn();
   const renewKey = vi.fn();
   const disableKey = vi.fn();
@@ -66,6 +69,8 @@ describe('DashboardPage', () => {
     current = tournament();
     removeMany.mockReset().mockResolvedValue(1);
     assign.mockReset().mockResolvedValue(tournament());
+    logoutAllOrganizers.mockReset().mockResolvedValue(true);
+    changeAdminPassword.mockReset().mockResolvedValue('ok');
     getKey.mockReset().mockResolvedValue('76258');
     renewKey.mockReset().mockResolvedValue('13579');
     disableKey.mockReset().mockResolvedValue(true);
@@ -111,6 +116,8 @@ describe('DashboardPage', () => {
             isAdmin: signal(true),
             canViewOrganizers: signal(true),
             openLogin: vi.fn(),
+            logoutAllOrganizers,
+            changeAdminPassword,
           },
         },
         {
@@ -336,7 +343,9 @@ describe('DashboardPage', () => {
     await settle(fixture);
 
     expect(root.querySelector('tf-tournament-form')?.textContent).toContain('published and locked');
-    expect(root.querySelector('tf-tournament-form fieldset')?.hasAttribute('disabled')).toBe(true);
+    expect(root.querySelectorAll('tf-tournament-form fieldset')[1]?.hasAttribute('disabled')).toBe(
+      true,
+    );
     (root.querySelector('#tf_winner1') as HTMLInputElement).value = 'NewChamp';
     (root.querySelector('#tf_winner1') as HTMLInputElement).dispatchEvent(new Event('input'));
     (root.querySelector('tf-tournament-form form') as HTMLFormElement).dispatchEvent(
@@ -405,7 +414,7 @@ describe('DashboardPage', () => {
     await settle(fixture);
 
     expect(root.querySelector('tf-tournament-form')?.textContent).toContain(
-      'created 1 of 1 allowed tournaments',
+      '1 of 1 allowed tournaments',
     );
     const publish = root.querySelector('tf-tournament-form button[type="submit"]');
     expect((publish as HTMLButtonElement).disabled).toBe(true);
@@ -462,7 +471,7 @@ describe('DashboardPage', () => {
 
     button(root, 'Edit')?.click();
     await settle(fixture);
-    const winners = () => root.querySelector('fieldset:has(#tf_winner1)');
+    const winners = () => Array.from(root.querySelectorAll('fieldset:has(#tf_winner1)')).at(-1);
     expect(winners()?.hasAttribute('disabled')).toBe(true);
     expect(root.textContent).toContain('Winners unlock once the Match Bracket is complete');
     expect(button(root, 'Pull winners')).toBeUndefined();
@@ -1015,5 +1024,165 @@ describe('DashboardPage', () => {
         (e) => e.textContent?.trim() === 'Registration open',
       ).length,
     ).toBe(1);
+  });
+
+  it('shows the thank-you note to organizers on the dashboard, but not to the admin', async () => {
+    asOrganizer();
+    const organizer = TestBed.createComponent(DashboardPage);
+    await settle(organizer);
+    const note = (organizer.nativeElement as HTMLElement).querySelector('tf-thanks-note');
+    expect(note?.textContent).toContain('Enjoyed TourneyForge');
+    expect(note?.textContent).toContain('Speedy40');
+    expect(note?.querySelector('button')?.textContent).toContain('Copy thank-you message');
+  });
+
+  it('does not show the thank-you note to the admin', async () => {
+    const admin = TestBed.createComponent(DashboardPage);
+    await settle(admin);
+    expect((admin.nativeElement as HTMLElement).querySelector('tf-thanks-note')).toBeNull();
+  });
+
+  it('keeps a finished tournament view-only for organizers and points them to Speedy', async () => {
+    current = tournament({ completed: true, locked: false, organizerId: 'o2' });
+    asOrganizer();
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+
+    expect(button(root, 'Participants')).toBeDefined();
+    expect(button(root, 'Open in Forge')).toBeDefined();
+    expect(button(root, 'Messages')).toBeDefined();
+    expect(button(root, 'Results')).toBeDefined();
+    expect(button(root, 'Edit')).toBeUndefined();
+    expect(button(root, 'Delete')).toBeUndefined();
+
+    button(root, 'Reopen Tournament')?.click();
+    await settle(fixture);
+    expect(update).not.toHaveBeenCalled();
+    expect(TestBed.inject(ToastService).message()).toContain('contact Speedy');
+
+    button(root, 'Participants')?.click();
+    await settle(fixture);
+    const modal = root.querySelector('tf-participants-modal') as HTMLElement;
+    expect(modal.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(button(modal, 'Add participant')).toBeUndefined();
+    expect(modal.querySelector('.replace')).toBeNull();
+  });
+
+  it('shows the finished tournament read-only in the form for organizers', async () => {
+    current = tournament({ completed: true, locked: false, organizerId: 'o2' });
+    asOrganizer();
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+
+    button(root, 'Results')?.click();
+    await settle(fixture);
+    const form = root.querySelector('tf-tournament-form') as HTMLElement;
+    expect(form.textContent).toContain('view-only');
+    expect(form.querySelector('fieldset')?.hasAttribute('disabled')).toBe(true);
+    expect((form.querySelector('#tf_title') as HTMLInputElement).value).toBe('Carrom Cup');
+    expect(form.querySelector('button[type="submit"]')).toBeNull();
+    expect(button(form, 'Close')).toBeDefined();
+    (form.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle(fixture);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('still lets the admin reopen and edit a finished tournament', async () => {
+    current = tournament({ completed: true });
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+    expect(button(root, 'Edit')).toBeDefined();
+    button(root, 'Reopen Tournament')?.click();
+    await settle(fixture);
+    expect(update).toHaveBeenCalledWith('t1', { completed: false }, expect.anything());
+  });
+
+  it('lets an organizer still finish a running tournament', async () => {
+    current = tournament({ startUTC: Date.now() + 86_400_000, locked: false, organizerId: 'o2' });
+    asOrganizer();
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+    button(root, 'Mark Completed')?.click();
+    await settle(fixture);
+    expect(update).toHaveBeenCalledWith('t1', { completed: true }, expect.anything());
+  });
+
+  it('gives the admin controls to log out organizers and change the password', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+    tabButton(root, 'Organizers')?.click();
+    await settle(fixture);
+
+    const controls = root.querySelector('tf-admin-controls') as HTMLElement;
+    button(controls, 'Log out all organizers')?.click();
+    await settle(fixture);
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(logoutAllOrganizers).toHaveBeenCalled();
+    expect(TestBed.inject(ToastService).message()).toContain('logged out');
+
+    confirmSpy.mockReturnValue(false);
+    logoutAllOrganizers.mockClear();
+    button(controls, 'Log out all organizers')?.click();
+    await settle(fixture);
+    expect(logoutAllOrganizers).not.toHaveBeenCalled();
+
+    button(controls, 'Change my password')?.click();
+    await settle(fixture);
+    const set = (id: string, value: string) => {
+      const el = root.querySelector('#' + id) as HTMLInputElement;
+      el.value = value;
+      el.dispatchEvent(new Event('input'));
+    };
+    const submit = async () => {
+      (root.querySelector('tf-admin-controls form') as HTMLFormElement).dispatchEvent(
+        new Event('submit'),
+      );
+      await settle(fixture);
+    };
+    set('adminPwCurrent', 'old');
+    set('adminPwNew', 'brandnew1');
+    set('adminPwConfirm', 'different');
+    await submit();
+    expect(controls.textContent).toContain('do not match');
+    expect(changeAdminPassword).not.toHaveBeenCalled();
+
+    set('adminPwConfirm', 'brandnew1');
+    changeAdminPassword.mockResolvedValueOnce('wrong');
+    await submit();
+    expect(controls.textContent).toContain('current password is not correct');
+
+    await submit();
+    expect(changeAdminPassword).toHaveBeenLastCalledWith('old', 'brandnew1');
+    expect(root.querySelector('tf-admin-controls [role="dialog"]')).toBeNull();
+    expect(TestBed.inject(ToastService).message()).toContain('password was changed');
+    confirmSpy.mockRestore();
+  });
+
+  it('does not show the admin controls to organizers who can add organizers', async () => {
+    TestBed.overrideProvider(AuthService, {
+      useValue: {
+        session: signal<Session | null>({
+          role: 'organizer',
+          id: 'o2',
+          displayName: 'Bella',
+          canManageOrganizers: true,
+        }),
+        isAdmin: signal(false),
+        canViewOrganizers: signal(true),
+        openLogin: vi.fn(),
+      },
+    });
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+    tabButton(root, 'Organizers')?.click();
+    await settle(fixture);
+    expect(root.querySelector('tf-admin-controls')).toBeNull();
   });
 });

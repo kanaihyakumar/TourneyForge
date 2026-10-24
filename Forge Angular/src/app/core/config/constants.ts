@@ -90,6 +90,10 @@ export const USAGE_TIMEZONE = 'America/Los_Angeles';
 export const ADMIN_OWNER_ID = 'admin';
 export const ADMIN_OWNER_NAME = 'Admin';
 
+export const SESSION_CHECK_MS = 5 * 60_000;
+export const SESSION_CHECK_MIN_GAP_MS = 60_000;
+export const MIN_ADMIN_PASSWORD = 6;
+
 export const THANKS_NOTE =
   'Enjoyed TourneyForge and saved yourself loads of effort? Say thanks to Speedy with a 🎁 gift or an ✨ aura on Plato - every bit keeps the arena running!';
 
@@ -108,6 +112,8 @@ export const MAX_CHAT_LINES = 200;
 export const MAX_INBOX_MESSAGES = 100;
 export const INBOX_POLL_MS = 120_000;
 export const CHAT_CONNECT_TIMEOUT_MS = 12_000;
+
+export const FINISHED_NOTICE = `This tournament is finished, so it is view-only for organizers. To reopen or change it, contact Speedy on Plato (platoid: ${CONTACT_PLATO_ID}) or on Discord (${DISCORD_ICON} ${CONTACT_DISCORD_ID}).`;
 
 export const LOCKED_NOTICE = `This tournament is published and locked. To change its details, contact Speedy on Plato (platoid: ${CONTACT_PLATO_ID}) or on Discord (${DISCORD_ICON} ${CONTACT_DISCORD_ID}).`;
 

@@ -15,6 +15,7 @@ import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import {
   DEFAULT_CLOSING_MESSAGE,
   DEFAULT_TIMEZONE,
+  FINISHED_NOTICE,
   LOCKED_NOTICE,
   WINNER_PLACES,
 } from '../../core/config/constants';
@@ -50,7 +51,11 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 import { TimezoneService } from '../../core/services/timezone.service';
 import { ToastService } from '../../core/services/toast.service';
-import { TournamentLimitError, TournamentService } from '../../core/services/tournament.service';
+import {
+  SessionEndedError,
+  TournamentLimitError,
+  TournamentService,
+} from '../../core/services/tournament.service';
 import { deserializeStages, podiumFromSavedBracket } from '../../core/utils/bracket';
 import { formatPlatoId } from '../../core/utils/plato';
 import {
@@ -60,6 +65,7 @@ import {
   utcToLocalParts,
 } from '../../core/utils/time';
 import {
+  isViewOnlyFor,
   registrationLabel,
   usesFreeRounds,
   winnersFromPodium,
@@ -186,7 +192,11 @@ export class TournamentForm {
       this.canPull() || tournament.winners.length > 0 || (started && usesFreeRounds(tournament))
     );
   });
-  protected readonly resultsOnly = computed(() => !!this.editing()?.locked && !this.auth.isAdmin());
+  protected readonly viewOnly = computed(() => isViewOnlyFor(this.auth.session(), this.editing()));
+  protected readonly finishedNotice = FINISHED_NOTICE;
+  protected readonly resultsOnly = computed(
+    () => !this.viewOnly() && !!this.editing()?.locked && !this.auth.isAdmin(),
+  );
   protected readonly quota = resource({
     params: () => (this.auth.session()?.role === 'organizer' ? this.auth.session() : undefined),
     loader: async ({ params }) => {
@@ -407,6 +417,10 @@ export class TournamentForm {
     const session = this.auth.session();
     const value = this.form.getRawValue();
     const editing = this.editing();
+    if (this.viewOnly()) {
+      this.toast.show(FINISHED_NOTICE);
+      return;
+    }
     if (editing && this.resultsOnly()) {
       await this.persist({
         winners: this.collectWinners(value.winners, value.prizes),
@@ -511,7 +525,9 @@ export class TournamentForm {
       this.toast.show(
         err instanceof TournamentLimitError
           ? 'You have reached your tournament limit. Contact Speedy on Plato.'
-          : 'Something went wrong saving the tournament.',
+          : err instanceof SessionEndedError
+            ? 'Your session has ended. Please log in again.'
+            : 'Something went wrong saving the tournament.',
       );
       console.error(err);
     } finally {

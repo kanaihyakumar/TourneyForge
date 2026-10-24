@@ -126,7 +126,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
         heading: 'Organizer and admin accounts',
         paragraphs: [
           'Organizer accounts are created by the admin. Keep your login private and you are responsible for what is published from your account.',
-          'Admins may limit how many tournaments an organizer can create. Once a tournament is published it is locked: its details cannot be edited by the organizer. To change a published tournament, contact the admin, who can unlock it for editing. After editing, it must be published again. Organizers cannot delete tournaments; ask the admin if one needs to be removed.',
+          'Admins may limit how many tournaments an organizer can create. Once a tournament is published it is locked: its details cannot be edited by the organizer. To change a published tournament, contact the admin, who can unlock it for editing. After editing, it must be published again. Organizers cannot delete tournaments; ask the admin if one needs to be removed. Once a tournament is marked completed it becomes view-only for organizers, and only the admin can reopen it. The admin can sign all organizers out at any time, and an organizer whose account is removed is signed out and can no longer create or change tournaments.',
         ],
       },
       {

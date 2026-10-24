@@ -15,6 +15,10 @@
   </tf-banner>
 }
 
+@if (store.viewOnly()) {
+  <tf-banner tone="warn" icon="🔒">{{ finishedNotice }}</tf-banner>
+}
+
 <tf-card
   icon="👥"
   title="Participants"
@@ -73,7 +77,7 @@
           variant="toggle"
           [ngModel]="store.thirdPlaceEnabled()"
           (ngModelChange)="store.thirdPlaceEnabled.set($event)"
-          [disabled]="store.started()"
+          [disabled]="store.started() || store.viewOnly()"
         >
           Also generate a 3rd place match (from the two semifinal losers)
         </tf-checkbox>
@@ -104,7 +108,9 @@
       }
     </div>
     <div class="btn-row flush">
-      @if (store.started()) {
+      @if (store.viewOnly()) {
+        <span class="field-note">View only</span>
+      } @else if (store.started()) {
         <button type="button" tfButton (click)="store.resetBracket()">🔁 Reset Bracket</button>
       } @else {
         <button type="button" tfButton variant="primary" (click)="store.startBracket()">
@@ -125,13 +131,14 @@
     <tf-bracket-stage
       [stage]="stage"
       [stageIndex]="i"
-      [canReshuffle]="i === store.stages().length - 1 && !store.podium()"
+      [readOnly]="store.viewOnly()"
+      [canReshuffle]="i === store.stages().length - 1 && !store.podium() && !store.viewOnly()"
       (reshuffle)="store.reshuffleLastStage()"
       (pick)="pick(i, $event)"
     />
   }
 
-  @if (!store.podium() && store.lastStage()) {
+  @if (!store.podium() && store.lastStage() && !store.viewOnly()) {
     @if (store.nextRound(); as info) {
       <div class="next-round">
         <p class="field-note">

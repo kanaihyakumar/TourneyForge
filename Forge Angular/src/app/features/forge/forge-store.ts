@@ -34,6 +34,7 @@ import { normalizePlatoId } from '../../core/utils/plato';
 import { computeLeaderboard, scoringGames, standingDetail } from '../../core/utils/scoring';
 import {
   canManage,
+  isViewOnlyFor,
   registrationLabel,
   usesFreeRounds,
   winnersFromPodium,
@@ -99,7 +100,10 @@ export class ForgeStore {
       this.perMatch(),
   );
   readonly roundWinnerLines = computed(() => roundWinnerLines(this.stages()));
-  readonly canReplace = computed(() => canManage(this.auth.session(), this.tournament()));
+  readonly viewOnly = computed(() => isViewOnlyFor(this.auth.session(), this.tournament()));
+  readonly canReplace = computed(
+    () => canManage(this.auth.session(), this.tournament()) && !this.viewOnly(),
+  );
   readonly scoring = computed(() => {
     const config = this.tournament()?.scoring;
     return config?.enabled ? config : null;
@@ -233,6 +237,7 @@ export class ForgeStore {
   }
 
   startBracket(): void {
+    if (this.viewOnly()) return;
     const names = this.members();
     if (names.length < 2) {
       this.toast.show('Add at least 2 participants before starting a bracket.', 'accent');
@@ -257,6 +262,7 @@ export class ForgeStore {
   }
 
   resetBracket(): void {
+    if (this.viewOnly()) return;
     const message = this.scoring()
       ? 'Reset the whole bracket? This clears all picked winners and the recorded points and leaderboard (Pro / Nab tags are kept).'
       : 'Reset the whole bracket? This clears all picked winners.';
@@ -271,6 +277,7 @@ export class ForgeStore {
   }
 
   reshuffleLastStage(): void {
+    if (this.viewOnly()) return;
     const stage = this.lastStage();
     if (!stage) return;
     if (
@@ -288,6 +295,7 @@ export class ForgeStore {
   }
 
   pickWinner(stageIndex: number, matchIndex: number, playerIndex: number): void {
+    if (this.viewOnly()) return;
     this.stages.update((stages) =>
       stages.map((stage, si) =>
         si !== stageIndex
@@ -304,6 +312,7 @@ export class ForgeStore {
   }
 
   advance(): void {
+    if (this.viewOnly()) return;
     const last = this.lastStage();
     if (!last || !isStageComplete(last)) return;
     const winners = stageWinners(last);
@@ -341,6 +350,7 @@ export class ForgeStore {
     players: string[],
     change: (game: ScoreGame) => ScoreGame,
   ): void {
+    if (this.viewOnly()) return;
     const existing = this.gameFor(ref);
     if (existing) {
       this.games.update((list) => list.map((g) => (g.id === existing.id ? change(g) : g)));
@@ -392,6 +402,7 @@ export class ForgeStore {
   }
 
   removeGame(id: string): void {
+    if (this.viewOnly()) return;
     this.games.update((list) => list.filter((g) => g.id !== id));
     this.persist();
   }
@@ -448,6 +459,7 @@ export class ForgeStore {
   }
 
   advanceFree(): void {
+    if (this.viewOnly()) return;
     const last = this.lastStage();
     if (!last || !isStageComplete(last)) return;
     const names = this.plannedPlayers();
@@ -469,6 +481,7 @@ export class ForgeStore {
   }
 
   private persist(): void {
+    if (this.viewOnly()) return;
     if (!this.tournamentId) return;
     const seq = ++this.saveSeq;
     this.pendingSaves++;

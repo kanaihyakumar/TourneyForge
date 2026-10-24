@@ -4,11 +4,13 @@ import {
   ADMIN_OWNER_ID,
   ADMIN_OWNER_NAME,
   DEFAULT_TIMEZONE,
+  FINISHED_NOTICE,
   LOCK_EXEMPT_FIELDS,
   REG_KEYS_COLLECTION,
   STORAGE_KEYS,
 } from '../config/constants';
 import { formatWithZone } from '../utils/time';
+import { AuthService } from './auth.service';
 import {
   BulkAddResult,
   ClearOptions,
@@ -33,6 +35,7 @@ import {
   normalizeRegistrationKey,
   randomRegistrationKey,
   findDuplicateRegistration,
+  isViewOnlyFor,
   registrationLabel,
   sortTournaments,
   withMeta,
@@ -66,6 +69,8 @@ const UPDATABLE_FIELDS = [
 
 export class TournamentLimitError extends Error {}
 
+export class SessionEndedError extends Error {}
+
 export interface TournamentQuota {
   limit: number;
   used: number;
@@ -81,6 +86,7 @@ const normalizeSlots = (value: unknown): number => parseInt(String(value), 10) |
 export class TournamentService {
   private readonly firestore = inject(FirestoreService);
   private readonly storage = inject(StorageService);
+  private readonly auth = inject(AuthService);
 
   readonly myRegistrations = signal<string[]>(
     this.storage.getJson<string[]>(STORAGE_KEYS.myRegistrations, []),
@@ -99,6 +105,14 @@ export class TournamentService {
     if (!session || !ids.length) return [];
     const owned = await this.ownedOrganizerIds(session);
     return ids.filter((id) => owned.has(id));
+  }
+
+  private canEdit(session: Session | null, data: TournamentData): boolean {
+    return canManage(session, data) && !isViewOnlyFor(session, data);
+  }
+
+  private async stillActive(session: Session | null): Promise<boolean> {
+    return session?.role !== 'organizer' || (await this.auth.verifySession(false, session));
   }
 
   private ref(id: string) {
@@ -163,19 +177,22 @@ export class TournamentService {
 
   async quota(session: Session | null): Promise<TournamentQuota> {
     if (!session || session.role !== 'organizer') return { limit: 0, used: 0, reached: false };
-    const [organizer, owned] = await Promise.all([
+    const tournaments = collection(this.firestore.db, 'tournaments');
+    const [organizer, owned, shared] = await Promise.all([
       this.firestore.getDoc(doc(this.firestore.db, 'organizers', session.id)),
-      this.firestore.getDocs(
-        query(collection(this.firestore.db, 'tournaments'), where('organizerId', '==', session.id)),
-      ),
+      this.firestore.getDocs(query(tournaments, where('organizerId', '==', session.id))),
+      this.firestore.getDocs(query(tournaments, where('managerIds', 'array-contains', session.id))),
     ]);
     const limit = Number(organizer.exists() ? organizer.data()['maxTournaments'] : 0) || 0;
-    const used = owned.docs.length;
+    const used = new Set([...owned.docs, ...shared.docs].map((d) => d.id)).size;
     return { limit, used, reached: limit > 0 && used >= limit };
   }
 
   async create(input: TournamentInput, session: Session | null): Promise<CreatedTournament | null> {
     if (!session) return null;
+    if (session.role === 'organizer' && !(await this.auth.verifySession(true, session))) {
+      throw new SessionEndedError('Session ended.');
+    }
     if ((await this.quota(session)).reached) {
       throw new TournamentLimitError('Tournament limit reached.');
     }
@@ -229,7 +246,7 @@ export class TournamentService {
     const snap = await this.firestore.getDoc(ref);
     if (!snap.exists()) return null;
     const existing = snap.data() as TournamentData;
-    if (!canManage(session, existing)) return null;
+    if (!this.canEdit(session, existing) || !(await this.stillActive(session))) return null;
     if (session?.role !== 'admin') {
       const touched = Object.keys(input).filter(
         (key) => (input as Record<string, unknown>)[key] !== undefined,
@@ -338,7 +355,8 @@ export class TournamentService {
     if (!id) return false;
     const ref = this.ref(id);
     const snap = await this.firestore.getDoc(ref);
-    if (!snap.exists() || !canManage(session, snap.data() as TournamentData)) return false;
+    if (!snap.exists() || !this.canEdit(session, snap.data() as TournamentData)) return false;
+    if (!(await this.stillActive(session))) return false;
     await this.firestore.updateDoc(ref, {
       forgeState: JSON.parse(JSON.stringify(state)),
       forgeStateUpdatedAt: Date.now(),
@@ -357,8 +375,16 @@ export class TournamentService {
     const snap = await this.firestore.getDoc(ref);
     if (!snap.exists()) return { ok: false, message: 'Tournament not found.' };
     const data = snap.data() as TournamentData;
-    if (staff && !canManage(staff, data)) {
-      return { ok: false, message: 'You do not have permission to edit this tournament.' };
+    if (staff && !this.canEdit(staff, data)) {
+      return {
+        ok: false,
+        message: isViewOnlyFor(staff, data)
+          ? FINISHED_NOTICE
+          : 'You do not have permission to edit this tournament.',
+      };
+    }
+    if (staff && !(await this.stillActive(staff))) {
+      return { ok: false, message: 'Your session has ended. Please log in again.' };
     }
     if (!staff && data.registrationClosed) {
       return { ok: false, message: 'Registration is closed for this tournament.' };
@@ -460,8 +486,13 @@ export class TournamentService {
     const snap = await this.firestore.getDoc(ref);
     if (!snap.exists()) return failed('Tournament not found.');
     const data = snap.data() as TournamentData;
-    if (!canManage(session, data))
-      return failed('You do not have permission to edit this tournament.');
+    if (!this.canEdit(session, data)) {
+      return failed(
+        isViewOnlyFor(session, data)
+          ? FINISHED_NOTICE
+          : 'You do not have permission to edit this tournament.',
+      );
+    }
 
     const isTeam = data.teamSize === 2;
     const capacity = capacityFor(data.slots, data.teamSize ?? 1);
@@ -516,8 +547,17 @@ export class TournamentService {
     const snap = await this.firestore.getDoc(ref);
     if (!snap.exists()) return { ok: false, message: 'Tournament not found.' };
     const data = snap.data() as TournamentData;
-    if (!canManage(session, data))
-      return { ok: false, message: 'You do not have permission to edit this tournament.' };
+    if (!this.canEdit(session, data)) {
+      return {
+        ok: false,
+        message: isViewOnlyFor(session, data)
+          ? FINISHED_NOTICE
+          : 'You do not have permission to edit this tournament.',
+      };
+    }
+    if (!(await this.stillActive(session))) {
+      return { ok: false, message: 'Your session has ended. Please log in again.' };
+    }
     const registrations = data.registrations || [];
     const current = registrations[index];
     if (!current) return { ok: false, message: 'That participant no longer exists.' };

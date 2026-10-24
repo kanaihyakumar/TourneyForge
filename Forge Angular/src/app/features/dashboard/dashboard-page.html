@@ -70,6 +70,10 @@
     </section>
   }
 
+  @if (!auth.isAdmin()) {
+    <tf-thanks-note />
+  }
+
   <tf-clear-data-modal [(tournamentId)]="clearId" (cleared)="tournaments.reload()" />
   <tf-registration-key-modal [(tournament)]="keyFor" />
   <tf-assign-modal

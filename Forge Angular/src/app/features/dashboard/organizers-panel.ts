@@ -12,6 +12,7 @@ import { Card } from '../../shared/ui/card';
 import { Field } from '../../shared/ui/field';
 import { ListRow } from '../../shared/ui/list-row';
 import { Tag } from '../../shared/ui/tag';
+import { AdminControls } from './admin-controls';
 import { OrganizerEditModal } from './organizer-edit-modal';
 import { PasswordModal } from './password-modal';
 
@@ -28,6 +29,7 @@ import { PasswordModal } from './password-modal';
     ListRow,
     Tag,
     OrganizerEditModal,
+    AdminControls,
     PasswordModal,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -15,7 +15,7 @@ import { formatPlatoId } from '../../core/utils/plato';
 import { registrationLabel } from '../../core/utils/tournament';
 import { ParticipantTarget } from '../../core/models/models';
 import { AuthService } from '../../core/services/auth.service';
-import { canManage } from '../../core/utils/tournament';
+import { canManage, isViewOnlyFor } from '../../core/utils/tournament';
 import { ParticipantModal } from '../../shared/tournament/participant-modal';
 import { Button } from '../../shared/ui/button';
 import { ChipList } from '../../shared/ui/chip-list';
@@ -92,8 +92,10 @@ export class ParticipantsListModal {
     return t ? t.registrations.map((r) => formatPlatoId(registrationLabel(r, t.teamSize))) : [];
   });
 
-  protected readonly canReplace = computed(() =>
-    canManage(this.auth.session(), this.tournament.value() ?? null),
+  protected readonly canReplace = computed(
+    () =>
+      canManage(this.auth.session(), this.tournament.value() ?? null) &&
+      !isViewOnlyFor(this.auth.session(), this.tournament.value()),
   );
 
   protected readonly chunks = computed(() => chunkText(this.labels(), ', '));

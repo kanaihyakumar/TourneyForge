@@ -5,6 +5,7 @@ export interface Session {
   id: string;
   displayName: string;
   canManageOrganizers?: boolean;
+  loginAt?: number;
 }
 
 export type TournamentStatus = 'ongoing' | 'upcoming' | 'completed' | 'cancelled';
