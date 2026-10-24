@@ -377,6 +377,14 @@ describe('suggested messages', () => {
     expect(renderMessage(find('registration'), long).text).toContain('76258');
   });
 
+  it('has a thank-you message for Speedy in the wrap up messages', () => {
+    const thanks = renderMessage(find('thanks-speedy'), vars);
+    expect(find('thanks-speedy').category).toBe('Wrap up');
+    expect(thanks.text).toContain('Speedy40');
+    expect(thanks.text).toContain('gift');
+    expect(thanks.tooLong).toBe(false);
+  });
+
   it('drops the group wording when there is no group', () => {
     const text = renderMessage(find('welcome'), { ...vars, group: '' }).text;
     expect(text.startsWith('Welcome to Carrom Cup!')).toBe(true);

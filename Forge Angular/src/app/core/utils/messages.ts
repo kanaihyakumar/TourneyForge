@@ -1,3 +1,4 @@
+import { THANKS_MESSAGE } from '../config/constants';
 import { Tournament } from '../models/models';
 import { CHAT_LIMIT } from './bracket';
 
@@ -112,6 +113,12 @@ export const MESSAGE_TEMPLATES: MessageTemplate[] = [
     category: 'Wrap up',
     label: 'Winners & thanks',
     text: '🏆 Congratulations to the winners of {title}! Results are on the website. Thank you all for playing - see you in the next one! 🎉',
+  },
+  {
+    id: 'thanks-speedy',
+    category: 'Wrap up',
+    label: 'Thank Speedy (TourneyForge)',
+    text: THANKS_MESSAGE,
   },
 ];
 

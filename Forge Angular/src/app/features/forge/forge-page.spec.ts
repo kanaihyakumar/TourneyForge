@@ -96,6 +96,13 @@ describe('ForgePage', () => {
     expect(root.querySelector('tf-podium')?.textContent).toContain('Tournament Results');
     expect(root.querySelector('tf-podium')?.textContent).toContain('1st Place');
     expect(root.querySelector('tf-podium')?.textContent).toContain('4th Place');
+    const thanks = root.querySelector('tf-podium tf-thanks-note') as HTMLElement;
+    expect(thanks.textContent).toContain('Enjoyed TourneyForge');
+    expect(thanks.textContent).toContain('gift');
+    expect(thanks.textContent).toContain('Speedy40');
+    expect(thanks.querySelector('tf-chunk-copy button')?.textContent).toContain(
+      'Copy thank-you message',
+    );
   });
 
   it('runs a four-player-per-table bracket and records werewolf points', async () => {
@@ -411,6 +418,7 @@ describe('ForgePage', () => {
     expect(stages[0].textContent).toContain('Round 1');
     expect(stages[0].querySelectorAll('.pick').length).toBe(15);
     expect(root.textContent).not.toContain('Tournament Results');
+    expect(root.querySelector('tf-thanks-note')).toBeNull();
 
     (stages[0].querySelectorAll('.pick')[4] as HTMLElement).click();
     (stages[0].querySelectorAll('.pick')[9] as HTMLElement).click();

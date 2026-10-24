@@ -90,6 +90,11 @@ export const USAGE_TIMEZONE = 'America/Los_Angeles';
 export const ADMIN_OWNER_ID = 'admin';
 export const ADMIN_OWNER_NAME = 'Admin';
 
+export const THANKS_NOTE =
+  'Enjoyed TourneyForge and saved yourself loads of effort? Say thanks to Speedy with a 🎁 gift or an ✨ aura on Plato - every bit keeps the arena running!';
+
+export const THANKS_MESSAGE = `💜 ${THANKS_NOTE} (platoid: Speedy40)`;
+
 export const REG_KEYS_COLLECTION = 'registrationKeys';
 export const REG_KEY_LENGTH = 5;
 

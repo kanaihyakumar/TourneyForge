@@ -14,6 +14,7 @@ import { chunkText } from '../../core/utils/bracket';
 import { formatPlatoId } from '../../core/utils/plato';
 import { podiumRows } from '../../core/utils/tournament';
 import { ContactLine } from '../../layout/contact-line';
+import { ThanksNote } from '../../shared/tournament/thanks-note';
 import { CreditLine } from '../../layout/credit-line';
 import { PageHeader } from '../../layout/page-header';
 import { Checkbox } from '../../shared/forms/checkbox';
@@ -41,6 +42,7 @@ import { ForgeStore } from './forge-store';
     PageHeader,
     CreditLine,
     ContactLine,
+    ThanksNote,
     Card,
     Banner,
     Button,
