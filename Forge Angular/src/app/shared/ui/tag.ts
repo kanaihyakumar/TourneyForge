@@ -16,6 +16,10 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
       @include neu-inset(2px);
       color: var(--accent-dark);
     }
+
+    :host(.at-limit) {
+      color: var(--danger);
+    }
   `,
 })
 export class Tag {}

@@ -169,6 +169,7 @@ describe('DashboardPage', () => {
                   password: 'x',
                   displayName: 'Ben',
                   canManageOrganizers: false,
+                  maxTournaments: 1,
                   createdAt: 0,
                 },
               ]),
@@ -1184,5 +1185,180 @@ describe('DashboardPage', () => {
     tabButton(root, 'Organizers')?.click();
     await settle(fixture);
     expect(root.querySelector('tf-admin-controls')).toBeNull();
+  });
+
+  it('shows the admin how many tournaments each organizer has and how close they are to the limit', async () => {
+    current = tournament({ organizerId: 'o2', organizerName: 'Bella', managerIds: ['o3'] });
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+    tabButton(root, 'Organizers')?.click();
+    await settle(fixture);
+
+    const rows = Array.from(root.querySelectorAll('tf-organizers-panel tf-list-row')).map((r) =>
+      (r.textContent ?? '').replace(/\s+/g, ' '),
+    );
+    const bella = rows.find((r) => r.includes('Bella')) ?? '';
+    const ben = rows.find((r) => r.includes('Ben')) ?? '';
+    expect(bella).toContain('1 tournament');
+    expect(bella).toContain('owns 1 · co-manages 0');
+    expect(ben).toContain('1 tournament');
+    expect(ben).toContain('owns 0 · co-manages 1');
+    expect(ben).toContain('1 / 1 tournament');
+    expect(ben).toContain('limit 1 (reached)');
+    expect(bella).not.toContain('limit');
+  });
+
+  it('shows no tournaments assigned for an organizer with none', async () => {
+    current = tournament({ organizerId: 'admin', organizerName: 'Admin', managerIds: [] });
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+    tabButton(root, 'Organizers')?.click();
+    await settle(fixture);
+    const bella = Array.from(root.querySelectorAll('tf-organizers-panel tf-list-row')).find((r) =>
+      r.textContent?.includes('Bella'),
+    );
+    expect(bella?.textContent).toContain('no tournaments assigned');
+    expect(bella?.textContent).not.toContain('co-manages');
+    const ben = Array.from(root.querySelectorAll('tf-organizers-panel tf-list-row')).find((r) =>
+      r.textContent?.includes('Ben'),
+    );
+    expect(ben?.textContent).toContain('limit 1 (1 left)');
+  });
+
+  it('suggests passwords when creating an organizer, with a chosen length and own passwords allowed', async () => {
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+    tabButton(root, 'Organizers')?.click();
+    await settle(fixture);
+
+    const generator = root.querySelector(
+      'tf-organizers-panel tf-password-generator',
+    ) as HTMLElement;
+    const options = () =>
+      Array.from(generator.querySelectorAll('.option')).map((o) => o.textContent?.trim() ?? '');
+    const password = () => (root.querySelector('#og_pass') as HTMLInputElement).value;
+
+    expect(options().length).toBe(4);
+    options().forEach((o) => {
+      expect(o.length).toBe(10);
+      expect(o).toContain('speedy');
+    });
+    const lengths = Array.from(
+      (generator.querySelector('#ogGenLength') as HTMLSelectElement).options,
+    ).map((o) => o.value);
+    expect(lengths).toEqual(['8', '9', '10', '11', '12', '13', '14', '15']);
+    expect(generator.querySelector('tf-chunk-copy')).toBeNull();
+
+    (generator.querySelectorAll('.option')[1] as HTMLElement).click();
+    await settle(fixture);
+    expect(password()).toBe(options()[1]);
+    expect(generator.querySelectorAll('.option.on').length).toBe(1);
+    expect(button(generator, 'Copy password')).toBeDefined();
+
+    const select = generator.querySelector('#ogGenLength') as HTMLSelectElement;
+    select.value = '15';
+    select.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    expect(options().length).toBe(4);
+    options().forEach((o) => {
+      expect(o.length).toBe(15);
+      expect(o).toContain('speedy');
+    });
+    expect(generator.textContent).toContain('15 characters');
+
+    select.value = '8';
+    select.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    options().forEach((o) => expect(o.length).toBe(8));
+
+    const before = options().join('|');
+    button(generator, 'Generate more')?.click();
+    await settle(fixture);
+    expect(options().join('|')).not.toBe(before);
+
+    const field = root.querySelector('#og_pass') as HTMLInputElement;
+    field.value = 'my-own-pass';
+    field.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    expect(password()).toBe('my-own-pass');
+    expect(generator.querySelectorAll('.option.on').length).toBe(0);
+  });
+
+  it('creates the organizer with the password that was picked', async () => {
+    const create = vi.fn().mockResolvedValue({});
+    TestBed.overrideProvider(OrganizerService, {
+      useValue: { list: () => Promise.resolve([]), create },
+    });
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+    tabButton(root, 'Organizers')?.click();
+    await settle(fixture);
+
+    const set = (id: string, value: string) => {
+      const el = root.querySelector('#' + id) as HTMLInputElement;
+      el.value = value;
+      el.dispatchEvent(new Event('input'));
+    };
+    set('og_display', 'Ada');
+    set('og_user', 'ada');
+    const generator = root.querySelector(
+      'tf-organizers-panel tf-password-generator',
+    ) as HTMLElement;
+    const chosen = generator.querySelectorAll('.option')[2].textContent?.trim();
+    (generator.querySelectorAll('.option')[2] as HTMLElement).click();
+    await settle(fixture);
+    (root.querySelector('tf-organizers-panel form') as HTMLFormElement).dispatchEvent(
+      new Event('submit'),
+    );
+    await settle(fixture);
+    expect(create).toHaveBeenCalled();
+    expect(create.mock.calls[0][0]).toMatchObject({ username: 'ada', password: chosen });
+    expect(chosen).toContain('speedy');
+  });
+
+  it('offers suggested passwords when resetting an organizer password too', async () => {
+    const resetPassword = vi.fn().mockResolvedValue(undefined);
+    TestBed.overrideProvider(OrganizerService, {
+      useValue: {
+        list: () =>
+          Promise.resolve([
+            {
+              id: 'o2',
+              username: 'bella',
+              usernameLower: 'bella',
+              password: 'x',
+              displayName: 'Bella',
+              canManageOrganizers: false,
+              createdAt: 0,
+            },
+          ]),
+        resetPassword,
+      },
+    });
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+    tabButton(root, 'Organizers')?.click();
+    await settle(fixture);
+
+    button(
+      root.querySelector('tf-organizers-panel tf-list-row') as HTMLElement,
+      'Reset Password',
+    )?.click();
+    await settle(fixture);
+    const modal = root.querySelector('tf-password-modal') as HTMLElement;
+    const generator = modal.querySelector('tf-password-generator') as HTMLElement;
+    expect(generator.querySelectorAll('.option').length).toBe(4);
+    const chosen = generator.querySelectorAll('.option')[0].textContent?.trim();
+    (generator.querySelectorAll('.option')[0] as HTMLElement).click();
+    await settle(fixture);
+    expect((modal.querySelector('#pwNewInput') as HTMLInputElement).value).toBe(chosen);
+    (modal.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle(fixture);
+    expect(resetPassword).toHaveBeenCalledWith('o2', chosen);
   });
 });

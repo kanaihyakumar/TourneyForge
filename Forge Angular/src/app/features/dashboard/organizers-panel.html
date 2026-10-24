@@ -28,6 +28,13 @@
           formControlName="password"
         />
       </tf-field>
+      <div class="span-2">
+        <tf-password-generator
+          idPrefix="ogGen"
+          [value]="form.controls.password.value"
+          (picked)="form.controls.password.setValue($event)"
+        />
+      </div>
       @if (auth.isAdmin()) {
         <div class="span-2">
           <tf-checkbox formControlName="canManageOrganizers">
@@ -68,13 +75,36 @@
           @if (o.canManageOrganizers) {
             <tf-tag>🔑 Can add organizers</tf-tag>
           }
-          @if (o.maxTournaments) {
+          @if (auth.isAdmin() && counts()[o.id]; as c) {
+            <tf-tag [class.at-limit]="!!o.maxTournaments && c.total >= o.maxTournaments">
+              🏆 {{ c.total }}{{ o.maxTournaments ? ' / ' + o.maxTournaments : '' }}
+              {{ c.total === 1 ? 'tournament' : 'tournaments' }}
+            </tf-tag>
+          } @else if (o.maxTournaments) {
             <tf-tag>🎟️ Limit: {{ o.maxTournaments }}</tf-tag>
           }
         </ng-container>
-        <ng-container ngProjectAs="[rowSub]"
-          >Added {{ o.createdAt | date: 'M/d/yyyy' }}</ng-container
-        >
+        <ng-container ngProjectAs="[rowSub]">
+          Added {{ o.createdAt | date: 'M/d/yyyy' }}
+          @if (auth.isAdmin()) {
+            @if (counts()[o.id]; as c) {
+              · owns {{ c.owned }} · co-manages {{ c.shared }}
+              @if (o.maxTournaments) {
+                · limit {{ o.maxTournaments }}
+                {{
+                  c.total >= o.maxTournaments
+                    ? '(reached)'
+                    : '(' + (o.maxTournaments - c.total) + ' left)'
+                }}
+              }
+            } @else {
+              · no tournaments assigned
+              @if (o.maxTournaments) {
+                · limit {{ o.maxTournaments }} ({{ o.maxTournaments }} left)
+              }
+            }
+          }
+        </ng-container>
         @if (auth.isAdmin()) {
           <ng-container ngProjectAs="[rowActions]">
             <button type="button" tfButton size="sm" (click)="editing.set(o)">✏️ Edit</button>

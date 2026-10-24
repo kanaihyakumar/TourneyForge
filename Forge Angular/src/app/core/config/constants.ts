@@ -93,6 +93,11 @@ export const ADMIN_OWNER_NAME = 'Admin';
 export const SESSION_CHECK_MS = 5 * 60_000;
 export const SESSION_CHECK_MIN_GAP_MS = 60_000;
 export const MIN_ADMIN_PASSWORD = 6;
+export const PASSWORD_KEYWORD = 'speedy';
+export const PASSWORD_MIN_LENGTH = 8;
+export const PASSWORD_MAX_LENGTH = 15;
+export const PASSWORD_DEFAULT_LENGTH = 10;
+export const PASSWORD_SUGGESTIONS = 4;
 
 export const THANKS_NOTE =
   'Enjoyed TourneyForge and saved yourself loads of effort? Say thanks to Speedy with a 🎁 gift or an ✨ aura on Plato - every bit keeps the arena running!';

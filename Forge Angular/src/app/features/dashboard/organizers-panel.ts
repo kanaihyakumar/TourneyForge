@@ -1,12 +1,22 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { Organizer } from '../../core/models/models';
+import { Organizer, Tournament } from '../../core/models/models';
 import { AuthService } from '../../core/services/auth.service';
 import { OrganizerService } from '../../core/services/organizer.service';
 import { ToastService } from '../../core/services/toast.service';
+import { organizerCounts } from '../../core/utils/tournament';
 import { Checkbox } from '../../shared/forms/checkbox';
 import { Input } from '../../shared/forms/input';
+import { PasswordGenerator } from '../../shared/forms/password-generator';
 import { Button } from '../../shared/ui/button';
 import { Card } from '../../shared/ui/card';
 import { Field } from '../../shared/ui/field';
@@ -30,6 +40,7 @@ import { PasswordModal } from './password-modal';
     Tag,
     OrganizerEditModal,
     AdminControls,
+    PasswordGenerator,
     PasswordModal,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -41,6 +52,9 @@ export class OrganizersPanel {
   protected readonly auth = inject(AuthService);
 
   readonly organizers = input<Organizer[] | undefined>(undefined);
+  readonly tournaments = input<Tournament[]>([]);
+
+  protected readonly counts = computed(() => organizerCounts(this.tournaments()));
   readonly error = input(false);
   readonly changed = output<void>();
 

@@ -157,6 +157,30 @@ export function registrationState(t: Tournament, now = Date.now()): Registration
   return registrationNotOpenYet(t, now) ? 'soon' : 'open';
 }
 
+export interface OrganizerCount {
+  owned: number;
+  shared: number;
+  total: number;
+}
+
+export function organizerCounts(
+  tournaments: Pick<Tournament, 'organizerId' | 'managerIds'>[],
+): Record<string, OrganizerCount> {
+  const counts: Record<string, OrganizerCount> = {};
+  const bump = (id: string, kind: 'owned' | 'shared') => {
+    const entry = (counts[id] ??= { owned: 0, shared: 0, total: 0 });
+    entry[kind] += 1;
+    entry.total += 1;
+  };
+  for (const t of tournaments) {
+    bump(t.organizerId, 'owned');
+    for (const id of new Set(t.managerIds ?? [])) {
+      if (id !== t.organizerId) bump(id, 'shared');
+    }
+  }
+  return counts;
+}
+
 export function isFinished(
   t: { completed?: boolean; cancelled?: boolean } | null | undefined,
 ): boolean {

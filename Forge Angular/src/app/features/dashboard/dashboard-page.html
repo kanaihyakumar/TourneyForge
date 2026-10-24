@@ -45,6 +45,7 @@
     <section [hidden]="activeTab() !== 'organizers'">
       <tf-organizers-panel
         [organizers]="organizers.value() === undefined ? undefined : assignable()"
+        [tournaments]="tournaments.value() ?? []"
         [error]="organizers.error() !== undefined"
         (changed)="onOrganizersChanged()"
       />

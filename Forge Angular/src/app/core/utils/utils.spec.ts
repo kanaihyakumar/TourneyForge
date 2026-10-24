@@ -21,6 +21,7 @@ import {
   stageText,
   stageWinners,
 } from './bracket';
+import { clampPasswordLength, generatePassword, generatePasswords } from './password';
 import { formatPlatoId, normalizePlatoId, ordinal, parseParticipantList, teamLabel } from './plato';
 import {
   canManage,
@@ -29,6 +30,7 @@ import {
   findDuplicateRegistration,
   isOpenForRegistration,
   normalizeRegistrationKey,
+  organizerCounts,
   parsePrizes,
   randomRegistrationKey,
   podiumRows,
@@ -859,5 +861,59 @@ describe('free-for-all rounds', () => {
     expect(
       registrationMessage({ ...t, title: 'T'.repeat(400) }, '76258', 'https://x.io').length,
     ).toBeLessThanOrEqual(256);
+  });
+
+  it('counts the tournaments each organizer owns and co-manages, once each', () => {
+    const counts = organizerCounts([
+      { organizerId: 'a', managerIds: ['b', 'c'] },
+      { organizerId: 'a', managerIds: [] },
+      { organizerId: 'b', managerIds: ['a', 'a', 'b'] },
+      { organizerId: 'admin', managerIds: ['c'] },
+    ]);
+    expect(counts['a']).toEqual({ owned: 2, shared: 1, total: 3 });
+    expect(counts['b']).toEqual({ owned: 1, shared: 1, total: 2 });
+    expect(counts['c']).toEqual({ owned: 0, shared: 2, total: 2 });
+    expect(counts['nobody']).toBeUndefined();
+  });
+
+  it('generates passwords that contain speedy, mix letters and numbers, and respect the length', () => {
+    for (let length = 8; length <= 15; length++) {
+      for (let run = 0; run < 40; run++) {
+        const password = generatePassword(length);
+        expect(password.length).toBe(length);
+        expect(password).toContain('speedy');
+        expect(password).toMatch(/^[a-z0-9]+$/);
+        const rest = password.replace('speedy', '');
+        expect(rest.length).toBe(length - 6);
+        expect(rest).toMatch(/[a-z]/);
+        expect(rest).toMatch(/[2-9]/);
+        expect(rest).not.toMatch(/[01ilo]/);
+      }
+    }
+  });
+
+  it('keeps the length between 8 and 15 and varies where speedy sits', () => {
+    expect(generatePassword(3).length).toBe(8);
+    expect(generatePassword(40).length).toBe(15);
+    expect(generatePassword(NaN).length).toBe(10);
+    expect(clampPasswordLength('12')).toBe(12);
+    expect(clampPasswordLength(0)).toBe(8);
+    expect(clampPasswordLength(99)).toBe(15);
+    expect(clampPasswordLength(undefined)).toBe(10);
+
+    const positions = new Set(
+      Array.from({ length: 300 }, () => generatePassword(10).indexOf('speedy')),
+    );
+    expect(positions.size).toBeGreaterThan(3);
+    expect(Math.min(...positions)).toBeGreaterThanOrEqual(0);
+    expect(Math.max(...positions)).toBeLessThanOrEqual(4);
+  });
+
+  it('suggests several different passwords at once', () => {
+    const list = generatePasswords(9);
+    expect(list.length).toBe(4);
+    expect(new Set(list).size).toBe(4);
+    list.forEach((p) => expect(p.length).toBe(9));
+    expect(generatePasswords(8, 6).length).toBe(6);
   });
 });

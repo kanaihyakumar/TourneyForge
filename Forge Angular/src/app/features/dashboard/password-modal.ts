@@ -14,10 +14,11 @@ import { Input } from '../../shared/forms/input';
 import { Button } from '../../shared/ui/button';
 import { Field } from '../../shared/ui/field';
 import { Modal } from '../../shared/ui/modal';
+import { PasswordGenerator } from '../../shared/forms/password-generator';
 
 @Component({
   selector: 'tf-password-modal',
-  imports: [ReactiveFormsModule, Modal, Field, Input, Button],
+  imports: [ReactiveFormsModule, Modal, Field, Input, Button, PasswordGenerator],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <tf-modal
@@ -30,6 +31,11 @@ import { Modal } from '../../shared/ui/modal';
         <tf-field label="New password" for="pwNewInput">
           <tf-input inputId="pwNewInput" required formControlName="password" />
         </tf-field>
+        <tf-password-generator
+          idPrefix="pwReset"
+          [value]="form.controls.password.value"
+          (picked)="form.controls.password.setValue($event)"
+        />
         <div class="btn-row flush">
           <button type="submit" tfButton variant="primary" block>Reset Password</button>
         </div>
