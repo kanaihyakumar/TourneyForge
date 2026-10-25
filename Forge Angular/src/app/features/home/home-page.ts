@@ -17,6 +17,7 @@ import { ContactLine } from '../../layout/contact-line';
 import { PageHeader } from '../../layout/page-header';
 import { PillButton } from '../../shared/ui/pill-button';
 import { MatchesModal } from '../../shared/tournament/matches-modal';
+import { InstallApp } from '../../layout/install-app';
 import { HowTo } from '../help/how-to';
 import { HowItWorks } from './how-it-works';
 import { TourCard } from './tour-card';
@@ -36,6 +37,7 @@ import { TournamentDetailModal } from './tournament-detail-modal';
     WinnersMarquee,
     HowItWorks,
     HowTo,
+    InstallApp,
     MatchesModal,
     TournamentDetailModal,
   ],

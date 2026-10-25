@@ -5,7 +5,11 @@ export const STORAGE_KEYS = {
   myRegistrations: 'tf_my_registrations_v1',
   displayTimezone: 'tf_display_tz',
   forgeImport: 'tf_forge_import',
+  installSnoozedUntil: 'tf_install_snoozed_until',
 } as const;
+
+export const INSTALL_PROMO_SNOOZE_MS = 7 * 24 * 3600 * 1000;
+export const UPDATE_CHECK_MIN_GAP_MS = 5 * 60_000;
 
 export const DEFAULT_TIMEZONE = 'Asia/Kolkata';
 export const ONGOING_WINDOW_MS = 4 * 3600 * 1000;

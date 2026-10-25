@@ -66,7 +66,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
       {
         heading: 'Storage on your device',
         paragraphs: [
-          'The site saves a few small items in your browser’s local storage so it works the way you expect:',
+          'The site saves a few small items in your browser’s local storage so it works the way you expect. If you install TourneyForge as an app, the browser also keeps a copy of the site’s files on your device so it opens quickly:',
         ],
         bullets: [
           'The tournaments you registered for on this device, so the page can show “You’re registered”.',

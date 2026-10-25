@@ -16,6 +16,7 @@ import { formatWithZone } from '../../core/utils/time';
 import { registrationMessage } from '../../core/utils/messages';
 import { isViewOnlyFor, registrationState } from '../../core/utils/tournament';
 import { Button } from '../../shared/ui/button';
+import { InstallApp } from '../../layout/install-app';
 import { HowTo } from '../help/how-to';
 import { Card } from '../../shared/ui/card';
 import { ListRow } from '../../shared/ui/list-row';
@@ -25,7 +26,7 @@ import { Tag } from '../../shared/ui/tag';
 
 @Component({
   selector: 'tf-tournament-list',
-  imports: [Card, ListRow, StatusBadge, Button, Tag, Segmented, HowTo],
+  imports: [Card, ListRow, StatusBadge, Button, Tag, Segmented, HowTo, InstallApp],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './tournament-list.html',
   styles: `

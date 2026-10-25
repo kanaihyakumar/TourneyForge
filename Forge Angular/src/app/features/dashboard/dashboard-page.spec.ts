@@ -1361,4 +1361,15 @@ describe('DashboardPage', () => {
     await settle(fixture);
     expect(resetPassword).toHaveBeenCalledWith('o2', chosen);
   });
+
+  it('puts a Get the app button on the dashboard next to How to use', async () => {
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+    const labels = Array.from(root.querySelectorAll('tf-tournament-list .aside button')).map((b) =>
+      b.textContent?.trim(),
+    );
+    expect(labels).toContain('📲 Get the app');
+    expect(labels).toContain('❓ How to use');
+  });
 });

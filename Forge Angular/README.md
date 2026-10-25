@@ -11,6 +11,12 @@ Angular version of the plain HTML/CSS/JS TourneyForge app. Same Firestore backen
 - `npm run deploy` - build, then deploy to Firebase Hosting (uses `../firebase.json`)
 - `npm run deploy:rules` - publish `../firestore.rules` (needed once for the organizer inbox)
 
+## Install as a mobile app (PWA)
+
+The production build is an installable app (manifest, icons and a service worker, which only runs in production). Players and organizers can tap **📲 Get the app** on the home page card, the dashboard or the footer. Android and desktop Chrome show the real install prompt. iPhone and iPad get step-by-step instructions (Share, then Add to Home Screen), because iOS has no install prompt.
+
+Test it on the production build: `npm run build`, serve `dist/tourney-forge/browser` on localhost or https, and open it in Chrome. Icons live in `public/icons` and the app details in `public/manifest.webmanifest`. Hosting headers for the service worker are in the root `firebase.json`, so deploy with `npm run deploy` (hosting only).
+
 ## Deploy
 
 ```bash

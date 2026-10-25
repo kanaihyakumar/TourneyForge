@@ -482,4 +482,16 @@ describe('HomePage', () => {
     await plain.whenStable();
     expect(plainRoot.querySelector('#regKeyInput')).toBeNull();
   });
+
+  it('shows the Get the app card on the home page, and removes it once installed', async () => {
+    localStorage.removeItem('tf_install_snoozed_until');
+    const fixture = TestBed.createComponent(HomePage);
+    const root = fixture.nativeElement as HTMLElement;
+    await fixture.whenStable();
+    await fixture.whenStable();
+    const card = root.querySelector('tf-install-app .card') as HTMLElement;
+    expect(card.textContent).toContain('Get the TourneyForge app');
+    expect(card.textContent).toContain('no more typing the website link');
+    expect(card.querySelector('button')?.textContent).toContain('Get the app');
+  });
 });

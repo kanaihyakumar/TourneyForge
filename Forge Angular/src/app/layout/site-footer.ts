@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { LEGAL_DOCS } from '../core/config/legal';
+import { InstallService } from '../core/services/install.service';
 
 @Component({
   selector: 'tf-site-footer',
@@ -10,6 +11,9 @@ import { LEGAL_DOCS } from '../core/config/legal';
     <nav aria-label="Legal and contact">
       @for (doc of docs; track doc.id) {
         <a [routerLink]="'/' + doc.id">{{ doc.title }}</a>
+      }
+      @if (install.available()) {
+        <button type="button" class="get-app" (click)="install.start()">📲 Get the app</button>
       }
     </nav>
   `,
@@ -33,6 +37,19 @@ import { LEGAL_DOCS } from '../core/config/legal';
       text-decoration: none;
     }
 
+    .get-app {
+      all: unset;
+      cursor: pointer;
+      font-size: 0.78rem;
+      font-weight: 900;
+      color: var(--accent-dark);
+    }
+
+    .get-app:hover,
+    .get-app:focus-visible {
+      text-decoration: underline;
+    }
+
     a:hover,
     a:focus-visible {
       color: var(--accent-dark);
@@ -42,4 +59,5 @@ import { LEGAL_DOCS } from '../core/config/legal';
 })
 export class SiteFooter {
   protected readonly docs = LEGAL_DOCS;
+  protected readonly install = inject(InstallService);
 }
