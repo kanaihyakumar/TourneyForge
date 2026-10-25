@@ -192,6 +192,7 @@ export interface TournamentData {
   createdAt: number;
   updatedAt: number;
   forgeState?: ForgeState;
+  forgeStateUpdatedAt?: number;
 }
 
 export interface Tournament extends TournamentData {

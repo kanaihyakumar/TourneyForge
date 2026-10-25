@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { ForgeImportService } from '../../core/services/forge-import.service';
 import { FirestoreService } from '../../core/services/firestore.service';
+import { ToastService } from '../../core/services/toast.service';
 import { TournamentService } from '../../core/services/tournament.service';
 import { withMeta } from '../../core/utils/tournament';
 import { ForgePage } from './forge-page';
@@ -600,5 +601,67 @@ describe('ForgePage', () => {
     } finally {
       localStorage.removeItem('tf_session_v1');
     }
+  });
+
+  describe('replaced participants', () => {
+    const edited = (ids: string[], updatedAt: number, forgeStateUpdatedAt = 0) =>
+      withMeta('t1', {
+        ...tournament,
+        registrations: ids.map((platoId) => ({ platoId, registeredAt: 1 })),
+        updatedAt,
+        forgeStateUpdatedAt,
+      });
+
+    const open = async () => {
+      const fixture = TestBed.createComponent(ForgePage);
+      await fixture.whenStable();
+      return { fixture, store: fixture.debugElement.injector.get(ForgeStore) };
+    };
+
+    it('shows the new name on a page that was already open', async () => {
+      const { store } = await open();
+      store.startBracket();
+      expect(store.stages()[0].matches.flatMap((m) => m.players)).toContain('a');
+      await vi.waitFor(() => expect(store.hasPendingSaves).toBe(false));
+      current = edited(['q', 'b', 'c', 'd'], 9, 9);
+      await store.refreshIfChanged(0);
+      expect(store.members()).toEqual(['q', 'b', 'c', 'd']);
+    });
+
+    it('keeps local choices when nothing changed elsewhere', async () => {
+      const { store } = await open();
+      store.perMatch.set(4);
+      await store.refreshIfChanged(0);
+      expect(store.perMatch()).toBe(4);
+    });
+
+    it('refuses a stale save, reloads and tells the user', async () => {
+      const { store } = await open();
+      const toast = TestBed.inject(ToastService);
+      saveForgeState.mockResolvedValueOnce('conflict');
+      current = edited(['q', 'b', 'c', 'd'], 9, 9);
+      store.startBracket();
+      await vi.waitFor(() => expect(toast.message()).toContain('changed elsewhere'));
+      expect(store.members()).toEqual(['q', 'b', 'c', 'd']);
+      expect(store.stages().length).toBe(0);
+    });
+
+    it('chains the save versions so its own saves never conflict', async () => {
+      const { store } = await open();
+      store.startBracket();
+      store.pickWinner(0, 0, 0);
+      await vi.waitFor(() => expect(saveForgeState).toHaveBeenCalledTimes(2));
+      const [first, second] = saveForgeState.mock.calls.map((c) => c[3]);
+      expect(second.expected).toBe(first.next);
+    });
+
+    it('carries a replaced name over in the next-round selection', async () => {
+      current = edited(['p0', 'p1', 'p2'], 1);
+      const { store } = await open();
+      store.nextPlayers.set(['p0', 'p1', 'p2']);
+      current = edited(['q0', 'p1', 'p2'], 9, 9);
+      await store.refreshIfChanged(0);
+      expect(store.nextPlayers()).toEqual(['q0', 'p1', 'p2']);
+    });
   });
 });

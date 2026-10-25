@@ -27,6 +27,8 @@ import { ChunkCopy } from '../ui/chunk-copy';
 import { Field } from '../ui/field';
 import { Modal } from '../ui/modal';
 
+const PINNED_IDS = ['registration', 'registration-full'];
+
 const UNIT_OPTIONS = [
   { value: 'mins', label: 'minutes' },
   { value: 'hours', label: 'hours' },
@@ -199,14 +201,14 @@ export class MessagesModal {
     const withRendered = (list: typeof MESSAGE_TEMPLATES) =>
       list.map((m) => ({ ...m, rendered: renderMessage(m, vars) }));
     sections.push({
-      category: '⭐ Share first - when registration opens',
-      items: withRendered(MESSAGE_TEMPLATES.filter((m) => m.id === 'registration')),
+      category: '⭐ Registration - open and full',
+      items: withRendered(MESSAGE_TEMPLATES.filter((m) => PINNED_IDS.includes(m.id))),
     });
     for (const category of order) {
       sections.push({
         category,
         items: withRendered(
-          MESSAGE_TEMPLATES.filter((m) => m.category === category && m.id !== 'registration'),
+          MESSAGE_TEMPLATES.filter((m) => m.category === category && !PINNED_IDS.includes(m.id)),
         ),
       });
     }

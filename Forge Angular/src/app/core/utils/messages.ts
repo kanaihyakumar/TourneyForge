@@ -49,6 +49,12 @@ export const MESSAGE_TEMPLATES: MessageTemplate[] = [
       '📢 Registration is open for {title}! Register here: {link} 🔑 Registration key: {key}. {slotsLeft} Hurry up! ⚔️',
   },
   {
+    id: 'registration-full',
+    category: 'Greeting',
+    label: 'Registration full',
+    text: '✅ Registration is full for {title}! 🎉 All participants, please be on time for the tournament. Thank you for joining - enjoy the play and all the best! 🍀',
+  },
+  {
     id: 'get-ready',
     category: 'Before the tour',
     label: 'Get ready (starts in…)',
@@ -193,30 +199,37 @@ export function slotsLeftText(capacity: number, registered: number, isTeam: bool
   return `Only ${left} ${isTeam ? 'team ' : ''}slot${left === 1 ? '' : 's'} left!`;
 }
 
-export function registrationMessage(
-  t: Pick<
-    Tournament,
-    | 'title'
-    | 'groupName'
-    | 'startUTC'
-    | 'hosts'
-    | 'organizerName'
-    | 'teamCapacity'
-    | 'registeredCount'
-    | 'teamSize'
-  >,
-  key: string,
-  link: string,
-): string {
+type MessageSource = Pick<
+  Tournament,
+  | 'title'
+  | 'groupName'
+  | 'startUTC'
+  | 'hosts'
+  | 'organizerName'
+  | 'teamCapacity'
+  | 'registeredCount'
+  | 'teamSize'
+>;
+
+function tournamentVars(t: MessageSource): MessageVars {
   const countdown = defaultCountdown(t.startUTC);
-  const template = MESSAGE_TEMPLATES.find((m) => m.id === 'registration') as MessageTemplate;
-  return renderMessage(template, {
+  return {
     title: t.title,
     group: t.groupName ?? '',
     time: formatDuration(countdown.amount, countdown.unit),
     hosts: (t.hosts.length ? t.hosts : [t.organizerName || 'the host']).join(', '),
     slotsLeft: slotsLeftText(t.teamCapacity, t.registeredCount, t.teamSize === 2),
-    key,
-    link,
-  }).text;
+  };
+}
+
+function templateById(id: string): MessageTemplate {
+  return MESSAGE_TEMPLATES.find((m) => m.id === id) as MessageTemplate;
+}
+
+export function registrationMessage(t: MessageSource, key: string, link: string): string {
+  return renderMessage(templateById('registration'), { ...tournamentVars(t), key, link }).text;
+}
+
+export function registrationFullMessage(t: MessageSource): string {
+  return renderMessage(templateById('registration-full'), tournamentVars(t)).text;
 }

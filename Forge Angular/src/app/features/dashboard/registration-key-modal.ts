@@ -13,7 +13,8 @@ import { Tournament } from '../../core/models/models';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
 import { TournamentService } from '../../core/services/tournament.service';
-import { registrationMessage } from '../../core/utils/messages';
+import { registrationFullMessage, registrationMessage } from '../../core/utils/messages';
+import { isFull } from '../../core/utils/tournament';
 import { ChunkCopy } from '../../shared/ui/chunk-copy';
 import { Button } from '../../shared/ui/button';
 import { Modal } from '../../shared/ui/modal';
@@ -45,6 +46,9 @@ import { Modal } from '../../shared/ui/modal';
             <div class="btn-row flush">
               <tf-chunk-copy [chunks]="[key()]" label="Copy key" />
               <tf-chunk-copy [chunks]="[message()]" label="Copy registration message" primary />
+              @if (full()) {
+                <tf-chunk-copy [chunks]="[fullMessage()]" label="Copy registration full message" />
+              }
             </div>
             <div class="preview">{{ message() }}</div>
             <div class="btn-row flush">
@@ -121,6 +125,16 @@ export class RegistrationKeyModal {
   protected readonly message = computed(() => {
     const t = this.tournament();
     return t && this.key() ? registrationMessage(t, this.key(), location.origin) : '';
+  });
+
+  protected readonly full = computed(() => {
+    const t = this.tournament();
+    return !!t && isFull(t);
+  });
+
+  protected readonly fullMessage = computed(() => {
+    const t = this.tournament();
+    return t ? registrationFullMessage(t) : '';
   });
 
   constructor() {

@@ -41,6 +41,8 @@ import {
   withPrizes,
 } from '../../core/utils/tournament';
 
+const REFRESH_MIN_GAP_MS = 20_000;
+
 @Injectable()
 export class ForgeStore {
   private readonly tournaments = inject(TournamentService);
@@ -178,6 +180,13 @@ export class ForgeStore {
 
   private saveSeq = 0;
   private pendingSaves = 0;
+  private saveChain: Promise<void> = Promise.resolve();
+  private forgeStamp = 0;
+  private knownUpdatedAt = 0;
+  private epoch = 0;
+  private resolving = false;
+  private loadedOnce = false;
+  private lastCheck = 0;
 
   get hasPendingSaves(): boolean {
     return this.pendingSaves > 0;
@@ -196,26 +205,57 @@ export class ForgeStore {
     if (this.tournamentId) await this.load();
   }
 
-  private async load(): Promise<void> {
-    const tournament = this.tournamentId ? await this.tournaments.get(this.tournamentId) : null;
+  async refreshIfChanged(minGapMs = REFRESH_MIN_GAP_MS): Promise<void> {
+    if (!this.tournamentId || this.pendingSaves > 0 || this.resolving) return;
+    const now = Date.now();
+    if (now - this.lastCheck < minGapMs) return;
+    this.lastCheck = now;
+    const latest = await this.tournaments.get(this.tournamentId);
+    if (!latest || this.pendingSaves > 0 || this.resolving) return;
+    const changed =
+      latest.updatedAt !== this.knownUpdatedAt ||
+      (latest.forgeStateUpdatedAt ?? 0) > this.forgeStamp;
+    if (changed) await this.load(latest);
+  }
+
+  private async load(prefetched?: Tournament | null): Promise<void> {
+    const tournament =
+      prefetched ?? (this.tournamentId ? await this.tournaments.get(this.tournamentId) : null);
     if (!tournament) {
       this.syncStatus.set('⚠️ Tournament not found.');
       return;
     }
-    this.tournament.set(tournament);
-    this.perMatch.set(tournament.forgeState?.bracket?.perMatch ?? tournament.playersPerMatch);
-    this.members.set(
-      tournament.registrations.map((r) => registrationLabel(r, tournament.teamSize)),
-    );
+    const previous = this.members();
     const bracket = tournament.forgeState?.bracket;
-    this.thirdPlaceEnabled.set(bracket ? !!bracket.thirdPlaceEnabled : true);
-    this.advancePerMatch.set(bracket?.advance ?? 1);
+    const keepSettings = this.loadedOnce && !bracket?.stages?.length && !this.started();
+    this.tournament.set(tournament);
+    this.knownUpdatedAt = tournament.updatedAt;
+    this.forgeStamp = tournament.forgeStateUpdatedAt ?? 0;
+    if (!keepSettings) {
+      this.perMatch.set(bracket?.perMatch ?? tournament.playersPerMatch);
+      this.thirdPlaceEnabled.set(bracket ? !!bracket.thirdPlaceEnabled : true);
+      this.advancePerMatch.set(bracket?.advance ?? 1);
+    }
+    const members = tournament.registrations.map((r) => registrationLabel(r, tournament.teamSize));
+    this.members.set(members);
+    this.carryOverNextPlayers(previous, members);
     this.games.set(tournament.forgeState?.games ?? []);
     this.stages.set(bracket?.stages?.length ? deserializeStages(bracket.stages) : []);
+    this.loadedOnce = true;
     this.syncStatus.set(
       bracket?.stages?.length
         ? '☁️ Loaded saved bracket from this tournament'
         : '☁️ Auto-saving to this tournament',
+    );
+  }
+
+  private carryOverNextPlayers(previous: string[], members: string[]): void {
+    const renamed = new Map<string, string>();
+    previous.forEach((name, i) => {
+      if (members[i] !== undefined && members[i] !== name) renamed.set(name, members[i]);
+    });
+    this.nextPlayers.update((list) =>
+      list ? list.map((n) => renamed.get(n) ?? n).filter((n) => members.includes(n)) : list,
     );
   }
 
@@ -484,6 +524,7 @@ export class ForgeStore {
     if (this.viewOnly()) return;
     if (!this.tournamentId) return;
     const seq = ++this.saveSeq;
+    const epoch = this.epoch;
     this.pendingSaves++;
     this.syncStatus.set('💾 Saving…');
     const state = buildForgeState(this.members(), this.stages(), this.thirdPlaceEnabled(), {
@@ -491,26 +532,60 @@ export class ForgeStore {
       advance: this.advancePerMatch(),
       games: this.games(),
     });
-    this.tournaments
-      .saveForgeState(this.tournamentId, state, this.auth.session())
-      .then((ok) => {
-        this.pendingSaves--;
-        if (seq !== this.saveSeq) return;
-        this.syncStatus.set(ok ? '☁️ Saved to tournament' : '⚠️ Not saved - check permissions');
-        if (!ok)
-          this.toast.show(
-            '⚠️ Could not save - you may not have permission to edit this tournament.',
-            'accent',
-          );
-      })
-      .catch((err) => {
-        this.pendingSaves--;
-        if (seq === this.saveSeq) this.syncStatus.set('⚠️ Could not save - check connection');
+    this.saveChain = this.saveChain.then(() => this.write(seq, epoch, state));
+  }
+
+  private async write(
+    seq: number,
+    epoch: number,
+    state: ReturnType<typeof buildForgeState>,
+  ): Promise<void> {
+    try {
+      if (epoch !== this.epoch) return;
+      const expected = this.forgeStamp;
+      const next = Math.max(Date.now(), expected + 1);
+      const result = await this.tournaments.saveForgeState(
+        this.tournamentId as string,
+        state,
+        this.auth.session(),
+        { expected, next },
+      );
+      if (result === 'conflict') {
+        await this.resolveConflict();
+        return;
+      }
+      if (result === true) this.forgeStamp = next;
+      if (seq !== this.saveSeq) return;
+      this.syncStatus.set(result ? '☁️ Saved to tournament' : '⚠️ Not saved - check permissions');
+      if (!result) {
         this.toast.show(
-          '⚠️ Could not save your changes - check your connection and try again.',
+          '⚠️ Could not save - you may not have permission to edit this tournament.',
           'accent',
         );
-        console.error(err);
-      });
+      }
+    } catch (err) {
+      if (seq === this.saveSeq) this.syncStatus.set('⚠️ Could not save - check connection');
+      this.toast.show(
+        '⚠️ Could not save your changes - check your connection and try again.',
+        'accent',
+      );
+      console.error(err);
+    } finally {
+      this.pendingSaves--;
+    }
+  }
+
+  private async resolveConflict(): Promise<void> {
+    this.epoch++;
+    this.resolving = true;
+    try {
+      await this.load();
+      this.toast.show(
+        'This tournament was changed elsewhere (for example a participant was replaced). Loaded the latest - please redo your last pick.',
+        'accent',
+      );
+    } finally {
+      this.resolving = false;
+    }
   }
 }

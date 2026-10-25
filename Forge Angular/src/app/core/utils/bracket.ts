@@ -121,8 +121,8 @@ export function hasPickedWinners(stage: BracketStage): boolean {
 export function toggleWinner(match: BracketMatch, index: number, stage: StageShape): BracketMatch {
   if (match.players.length <= 1) return match;
   const { max } = winnerLimits(match, stage);
-  if (max === 1) return { ...match, winners: [index] };
   const has = match.winners.includes(index);
+  if (max === 1) return { ...match, winners: has ? [] : [index] };
   const next = has ? match.winners.filter((w) => w !== index) : [...match.winners, index];
   return { ...match, winners: next.slice(-max) };
 }

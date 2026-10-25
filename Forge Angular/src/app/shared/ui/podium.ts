@@ -13,13 +13,15 @@ import { podiumRows } from '../../core/utils/tournament';
     @for (row of rows(); track $index) {
       <div class="row">
         <span class="medal">{{ row.medal }}</span>
-        <span>{{ row.name | platoId }}</span>
-        @if (row.detail) {
-          <span class="detail">{{ row.detail }}</span>
-        }
-        @if (row.prize) {
-          <span class="prize">🎁 {{ row.prize }}</span>
-        }
+        <span class="who">
+          <span class="name">{{ row.name | platoId }}</span>
+          @if (row.detail) {
+            <span class="detail">{{ row.detail }}</span>
+          }
+          @if (row.prize) {
+            <span class="prize">🎁 {{ row.prize }}</span>
+          }
+        </span>
         <span class="place">{{ row.label }}</span>
       </div>
     }
@@ -61,7 +63,7 @@ import { podiumRows } from '../../core/utils/tournament';
 
     .row {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 12px;
       border-radius: var(--radius-sm);
       font-weight: 800;
@@ -92,6 +94,18 @@ import { podiumRows } from '../../core/utils/tournament';
       font-size: 1.3rem;
     }
 
+    .who {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .name {
+      overflow-wrap: anywhere;
+    }
+
     .detail {
       font-size: 0.74rem;
       font-weight: 800;
@@ -101,11 +115,19 @@ import { podiumRows } from '../../core/utils/tournament';
     .prize {
       font-size: 0.74rem;
       font-weight: 800;
+      line-height: 1.35;
       color: var(--success);
+    }
+
+    .medal,
+    .place {
+      flex: none;
     }
 
     .place {
       margin-left: auto;
+      padding-top: 2px;
+      white-space: nowrap;
       font-size: 0.72rem;
       color: var(--text-soft);
       font-weight: 800;

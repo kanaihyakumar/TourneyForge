@@ -54,6 +54,7 @@ import {
   defaultCountdown,
   formatDuration,
   MESSAGE_TEMPLATES,
+  registrationFullMessage,
   registrationMessage,
   renderMessage,
   slotsLeftText,
@@ -455,6 +456,19 @@ describe('multi-player brackets', () => {
     expect(decided.winners).toEqual([2, 4]);
     const two = toggleWinner(newStage(['a', 'b'], 2, 1).matches[0], 0, newStage(['a', 'b'], 2, 1));
     expect(toggleWinner(two, 1, newStage(['a', 'b'], 2, 1)).winners).toEqual([1]);
+  });
+
+  it('lets a picked winner be unselected again in a one-winner match', () => {
+    const stage = newStage(['a', 'b'], 2, 1);
+    let match = toggleWinner(stage.matches[0], 0, stage);
+    expect(match.winners).toEqual([0]);
+    match = toggleWinner(match, 0, stage);
+    expect(match.winners).toEqual([]);
+    expect(isMatchComplete(match, stage)).toBe(false);
+    match = toggleWinner(match, 1, stage);
+    expect(match.winners).toEqual([1]);
+    match = toggleWinner(match, 0, stage);
+    expect(match.winners).toEqual([0]);
   });
 
   it('ranks up to four players at an N-player final in pick order', () => {
@@ -861,6 +875,27 @@ describe('free-for-all rounds', () => {
     expect(
       registrationMessage({ ...t, title: 'T'.repeat(400) }, '76258', 'https://x.io').length,
     ).toBeLessThanOrEqual(256);
+  });
+
+  it('builds the registration full message', () => {
+    const t = {
+      title: 'Demo Cup',
+      groupName: '',
+      startUTC: Date.now() + 3600_000,
+      hosts: ['Speedy'],
+      organizerName: 'Bella',
+      teamCapacity: 32,
+      registeredCount: 32,
+      teamSize: 1 as const,
+    };
+    const text = registrationFullMessage(t);
+    expect(text).toContain('Registration is full for Demo Cup');
+    expect(text).toContain('on time');
+    expect(text).toContain('Thank you for joining');
+    expect(text.length).toBeLessThanOrEqual(256);
+    expect(registrationFullMessage({ ...t, title: 'T'.repeat(400) }).length).toBeLessThanOrEqual(
+      256,
+    );
   });
 
   it('counts the tournaments each organizer owns and co-manages, once each', () => {

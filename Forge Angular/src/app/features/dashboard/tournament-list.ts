@@ -13,8 +13,8 @@ import { TimezoneService } from '../../core/services/timezone.service';
 import { ToastService } from '../../core/services/toast.service';
 import { TournamentService } from '../../core/services/tournament.service';
 import { formatWithZone } from '../../core/utils/time';
-import { registrationMessage } from '../../core/utils/messages';
-import { isViewOnlyFor, registrationState } from '../../core/utils/tournament';
+import { registrationFullMessage, registrationMessage } from '../../core/utils/messages';
+import { isFull, isViewOnlyFor, registrationState } from '../../core/utils/tournament';
 import { Button } from '../../shared/ui/button';
 import { InstallApp } from '../../layout/install-app';
 import { HowTo } from '../help/how-to';
@@ -109,6 +109,8 @@ export class TournamentList {
     return `${t.registeredCount}${capacity}${t.teamSize === 2 ? ' teams' : ' participants'}`;
   }
 
+  protected readonly isFull = isFull;
+
   protected readonly registrationOptions: SegmentOption[] = [
     { value: 'soon', label: '🔔 Soon', title: 'Show "Registration coming soon"' },
     { value: 'open', label: '⚔️ Open', title: 'Let players register' },
@@ -121,6 +123,14 @@ export class TournamentList {
   }
 
   protected async copyRegistrationMessage(t: Tournament): Promise<void> {
+    if (isFull(t)) {
+      await this.clipboard.copy(
+        registrationFullMessage(t),
+        'Registration full message copied! Paste it in your group.',
+        'accent',
+      );
+      return;
+    }
     this.busyId.set(t.id);
     try {
       const key = t.keyRequired

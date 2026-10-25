@@ -57,7 +57,7 @@ export const HOW_TO_SLIDES: HowToSlide[] = [
     steps: [
       'Every tournament in “My Tournaments” has a 🔔 Soon | ⚔️ Open | 🔒 Closed switch. The highlighted one is the current state.',
       '🔔 Soon - the card says “Registration coming soon” and hides the Register button. Perfect for building hype before sign-ups.',
-      '⚔️ Open - players register with their Plato ID and the tournament’s 5-digit registration key. When you switch to Open, a 📋 Copy registration message button appears beside the switch: tap it and paste the message in your group. It already has the title, the link, the key and how many slots are left.',
+      '⚔️ Open - players register with their Plato ID and the tournament’s 5-digit registration key. When you switch to Open, a 📋 Copy registration message button appears beside the switch: tap it and paste the message in your group. It already has the title, the link, the key and how many slots are left. Once every slot is taken, the button becomes 📋 Copy registration full message - paste it to tell everyone registration is complete and to be on time.',
       '🔑 Key shows the key itself, lets you create a new one or turn it off. Slots show “Slots full” by themselves once every slot is taken.',
       '🔒 Closed - no new sign-ups. You can still add participants yourself.',
     ],
@@ -130,7 +130,7 @@ export const GROUP_GUIDE_SLIDES: GroupGuideSlide[] = [
     when: 'About an hour before the start',
     points: [
       'Switch registration to ⚔️ Open and let participants register an hour before the tournament.',
-      'Tap 📋 Copy registration message beside the Soon / Open / Closed switch and paste it in the group. Players need the key in it plus their Plato ID, so only people in your group can join.',
+      'Tap 📋 Copy registration message beside the Soon / Open / Closed switch and paste it in the group. Players need the key in it plus their Plato ID, so only people in your group can join. When all slots fill up, share the registration full message (same button, or in 💬 Messages) to thank players and remind them to be on time.',
       'Keep nudging in the group as slots fill up: how many are left, register soon, slots are filling fast.',
       'Once every slot is taken, say that registration is full, wish everyone all the best and ask them to be ready at the time of the tournament.',
     ],

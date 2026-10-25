@@ -980,6 +980,32 @@ describe('DashboardPage', () => {
     expect(toast).toContain('Paste it in your group');
   });
 
+  it('switches the copy button to the registration full message once all slots are taken', async () => {
+    const copy = vi.fn().mockResolvedValue(undefined);
+    TestBed.overrideProvider(ClipboardService, { useValue: { copy } });
+    current = tournament({
+      startUTC: Date.now() + 86_400_000,
+      teamSize: 1,
+      slots: 2,
+      keyRequired: true,
+      registrations: ['a', 'b'].map((platoId) => ({ platoId, registeredAt: 1 })),
+    });
+    asOrganizer();
+    const fixture = TestBed.createComponent(DashboardPage);
+    const root = fixture.nativeElement as HTMLElement;
+    await settle(fixture);
+
+    expect(button(root, 'Copy registration message')).toBeUndefined();
+    button(root, 'Copy registration full message')?.click();
+    await settle(fixture);
+    expect(getKey).not.toHaveBeenCalled();
+    const [text, toast] = copy.mock.calls[0];
+    expect(text).toContain('Registration is full for Carrom Cup');
+    expect(text).toContain('on time');
+    expect(text).not.toContain('76258');
+    expect(toast).toContain('Registration full message copied');
+  });
+
   it('only offers the copy button while registration is open, and works without a key', async () => {
     const copy = vi.fn().mockResolvedValue(undefined);
     TestBed.overrideProvider(ClipboardService, { useValue: { copy } });
@@ -1017,8 +1043,12 @@ describe('DashboardPage', () => {
     const headings = Array.from(modal.querySelectorAll('h3.category')).map((h) =>
       h.textContent?.trim(),
     );
-    expect(headings[0]).toBe('⭐ Share first - when registration opens');
+    expect(headings[0]).toBe('⭐ Registration - open and full');
     expect(headings[1]).toBe('Greeting');
+    const labels = Array.from(modal.querySelectorAll('.message .top strong')).map((e) =>
+      e.textContent?.trim(),
+    );
+    expect(labels.slice(0, 2)).toEqual(['Registration open', 'Registration full']);
     expect(modal.querySelector('.message .text')?.textContent).toContain('Registration key: 76258');
     expect(
       Array.from(modal.querySelectorAll('.message .top strong')).filter(

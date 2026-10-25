@@ -135,6 +135,27 @@ describe('TournamentService.replaceParticipant', () => {
     expect(patch.winners[0].name).toBe('@Alice & @Eve');
   });
 
+  it('always stamps the Forge version so open Forge pages can notice a replacement', async () => {
+    delete store.data['forgeState'];
+    await service.replaceParticipant('t1', 0, 'Alice', 'Eve', admin);
+    expect((store.updates[0] as any).forgeStateUpdatedAt).toBeGreaterThan(0);
+  });
+
+  it('refuses a Forge save made from a stale copy, and accepts a current one', async () => {
+    const state = { members: [] } as never;
+    store.data['forgeStateUpdatedAt'] = 500;
+    expect(await service.saveForgeState('t1', state, admin, { expected: 400, next: 401 })).toBe(
+      'conflict',
+    );
+    expect(store.updates.length).toBe(0);
+    expect(await service.saveForgeState('t1', state, admin, { expected: 500, next: 501 })).toBe(
+      true,
+    );
+    expect((store.updates[0] as any).forgeStateUpdatedAt).toBe(501);
+    delete store.data['forgeStateUpdatedAt'];
+    expect(await service.saveForgeState('t1', state, admin, { expected: 0, next: 5 })).toBe(true);
+  });
+
   it('rejects duplicates and unauthorized users', async () => {
     expect((await service.replaceParticipant('t1', 0, 'Cara', 'Eve', admin)).ok).toBe(false);
     expect((await service.replaceParticipant('t1', 0, 'X', 'X', admin)).ok).toBe(false);

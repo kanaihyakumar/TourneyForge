@@ -57,7 +57,7 @@
               [disabled]="busyId() === t.id"
               (click)="copyRegistrationMessage(t)"
             >
-              📋 Copy registration message
+              {{ isFull(t) ? '📋 Copy registration full message' : '📋 Copy registration message' }}
             </button>
           }
           @if (regValue(t)) {

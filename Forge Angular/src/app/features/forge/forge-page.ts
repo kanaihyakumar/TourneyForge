@@ -107,6 +107,12 @@ export class ForgePage {
     this.store.init();
   }
 
+  @HostListener('window:focus')
+  @HostListener('document:visibilitychange')
+  protected onReturn(): void {
+    if (document.visibilityState === 'visible') void this.store.refreshIfChanged();
+  }
+
   @HostListener('window:beforeunload', ['$event'])
   protected onBeforeUnload(event: BeforeUnloadEvent): void {
     if (!this.store.hasPendingSaves) return;

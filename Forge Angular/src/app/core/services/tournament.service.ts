@@ -351,15 +351,23 @@ export class TournamentService {
     return snap.exists() ? ((snap.data() as TournamentData).forgeState ?? null) : null;
   }
 
-  async saveForgeState(id: string, state: ForgeState, session: Session | null): Promise<boolean> {
+  async saveForgeState(
+    id: string,
+    state: ForgeState,
+    session: Session | null,
+    version?: { expected: number; next: number },
+  ): Promise<boolean | 'conflict'> {
     if (!id) return false;
     const ref = this.ref(id);
     const snap = await this.firestore.getDoc(ref);
     if (!snap.exists() || !this.canEdit(session, snap.data() as TournamentData)) return false;
+    if (version && ((snap.data() as TournamentData).forgeStateUpdatedAt ?? 0) > version.expected) {
+      return 'conflict';
+    }
     if (!(await this.stillActive(session))) return false;
     await this.firestore.updateDoc(ref, {
       forgeState: JSON.parse(JSON.stringify(state)),
-      forgeStateUpdatedAt: Date.now(),
+      forgeStateUpdatedAt: version?.next ?? Date.now(),
     });
     return true;
   }
@@ -592,11 +600,11 @@ export class TournamentService {
         sameAsOld(w.name) ? { ...w, name: formatPlatoId(newLabel) } : w,
       );
     }
+    patch['forgeStateUpdatedAt'] = Date.now();
     if (data.forgeState) {
       patch['forgeState'] = JSON.parse(
         JSON.stringify(replaceInForgeState(data.forgeState, oldLabel, newLabel)),
       );
-      patch['forgeStateUpdatedAt'] = Date.now();
     }
     await this.firestore.updateDoc(ref, patch);
     return { ok: true, message: 'Participant replaced everywhere.' };
