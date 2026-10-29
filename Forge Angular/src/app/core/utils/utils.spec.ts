@@ -1,3 +1,4 @@
+import { activeNewGames, isNewGame } from '../config/new-games';
 import { BracketStage, Organizer } from '../models/models';
 import {
   chunkText,
@@ -44,9 +45,11 @@ import {
 } from './tournament';
 import {
   findGame,
+  formatSelectOptions,
   GAME_CATALOG,
   playersPerTable,
   resolveFormat,
+  roundSizeOptions,
   suggestedSlots,
 } from '../config/games';
 import { computeLeaderboard, isAdvancing, scoringGames } from './scoring';
@@ -131,6 +134,40 @@ describe('tournament utils', () => {
     expect(canManage({ role: 'organizer', id: 'o2', displayName: 'A' }, t)).toBe(true);
     expect(canManage({ role: 'organizer', id: 'o3', displayName: 'A' }, t)).toBe(false);
     expect(canManage(null, t)).toBe(false);
+  });
+
+  it('labels the round size choices from the same game formats as the create form', () => {
+    const game = findGame('Bubble Bay')!;
+    expect(formatSelectOptions(game.formats).map((o) => o.label)).toEqual([
+      '1v1',
+      '1v1v1 (3 players)',
+      '1v1v1v1 (4 players)',
+    ]);
+    expect(roundSizeOptions(game, 3)).toEqual([
+      { value: '2', label: '1v1' },
+      { value: '3', label: '1v1v1 (3 players)' },
+      { value: '4', label: '1v1v1v1 (4 players)' },
+    ]);
+    const bounce = roundSizeOptions(findGame('Bounce'), 3);
+    expect(bounce.map((o) => o.label)).toEqual([
+      '2 players',
+      '3 players',
+      '4 players',
+      '6 players',
+      '8 players',
+      '16 players',
+    ]);
+    expect(roundSizeOptions(null, 5)).toEqual([{ value: '5', label: '5 players' }]);
+  });
+
+  it('treats a game as new only for a limited time after it was added', () => {
+    const day = 86_400_000;
+    const added = Date.parse('2026-10-29');
+    expect(isNewGame('Bubble Bay', added + day)).toBe(true);
+    expect(isNewGame('Bubble Bay', added + 31 * day)).toBe(false);
+    expect(isNewGame('Bubble Bay', added - day)).toBe(false);
+    expect(isNewGame('Chess', added + day)).toBe(false);
+    expect(activeNewGames(added + day).map((g) => g.name)).toEqual(['Bubble Bay']);
   });
 
   it('builds podium rows sorted by place', () => {

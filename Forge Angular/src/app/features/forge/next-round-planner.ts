@@ -18,11 +18,7 @@ import { ForgeStore } from './forge-store';
 export class NextRoundPlanner {
   protected readonly store = inject(ForgeStore);
 
-  protected readonly sizeOptions = computed(() =>
-    this.store
-      .roundSizeOptions()
-      .map((n) => ({ value: String(n), label: `${n} players per game` })),
-  );
+  protected readonly sizeOptions = this.store.roundSizeOptions;
   protected readonly gameOptions = computed(() => {
     const names = [...new Set(this.store.mixedGames().map((m) => m.game))];
     return names.map((name) => ({ value: name, label: name }));

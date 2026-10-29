@@ -93,6 +93,17 @@
           />
         </tf-field>
       }
+      @if (store.tournamentMode && store.tableSizeOptions().length) {
+        <tf-field label="Players per match" for="perMatch">
+          <tf-select
+            inputId="perMatch"
+            [options]="store.tableSizeOptions()"
+            [ngModel]="'' + store.perMatch()"
+            (ngModelChange)="store.setPerMatch(+$event)"
+            [disabled]="store.started() || store.viewOnly()"
+          />
+        </tf-field>
+      }
       @if (store.perMatch() > 2) {
         <tf-field
           label="Suggested players advancing from each table (you can still pick any number)"
@@ -139,22 +150,24 @@
   }
 
   @if (!store.podium() && store.lastStage() && !store.viewOnly()) {
+    @if (store.lastStageComplete() && store.tableSizeOptions().length) {
+      <div class="next-round">
+        <tf-field label="Players per game next round" for="nextTable">
+          <tf-select
+            inputId="nextTable"
+            [options]="store.tableSizeOptions()"
+            [ngModel]="'' + store.perMatch()"
+            (ngModelChange)="store.setPerMatch(+$event)"
+          />
+        </tf-field>
+      </div>
+    }
     @if (store.nextRound(); as info) {
       <div class="next-round">
         <p class="field-note">
           🎯 {{ info.count }} players advance - next round has {{ info.sizes.length }}
           {{ info.sizes.length === 1 ? 'table' : 'tables' }} ({{ info.sizes.join(' + ') }} players).
         </p>
-        @if (store.tableSizeOptions().length > 1) {
-          <tf-field label="Players per game next round" for="nextTable">
-            <tf-select
-              inputId="nextTable"
-              [options]="tableSizeOptions()"
-              [ngModel]="'' + store.perMatch()"
-              (ngModelChange)="store.perMatch.set(+$event)"
-            />
-          </tf-field>
-        }
         @if (info.fullTotals.length) {
           <p class="field-note">
             💡 For full games of {{ store.perMatch() }} players, {{ info.fullTotals.join(' or ') }}

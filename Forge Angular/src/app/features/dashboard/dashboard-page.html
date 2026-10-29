@@ -3,6 +3,7 @@
 </tf-page-header>
 
 @if (auth.session()) {
+  <tf-new-games-banner />
   @if (quotaLevel() !== 'ok') {
     <tf-banner tone="warn" icon="⚠️" flush>
       {{

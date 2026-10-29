@@ -117,12 +117,10 @@ export class ForgeStore {
       : [];
   });
   readonly tableSizeOptions = computed(() => {
-    const game = findGame(this.tournament()?.game ?? '');
-    const sizes = game
-      ? game.formats.filter((f) => f.teamSize === 1 && f.perMatch > 2).map((f) => f.perMatch)
-      : [];
-    const unique = [...new Set([...sizes, this.perMatch()])].sort((a, b) => a - b);
-    return this.tournamentMode ? unique : [];
+    const tournament = this.tournament();
+    if (!tournament || tournament.teamSize === 2 || this.isMixed() || this.freeRounds()) return [];
+    const options = roundSizeOptions(findGame(tournament.game), this.perMatch());
+    return options.length > 1 ? options : [];
   });
   readonly nextRound = computed(() => {
     const stage = this.lastStage();
@@ -232,7 +230,11 @@ export class ForgeStore {
     this.knownUpdatedAt = tournament.updatedAt;
     this.forgeStamp = tournament.forgeStateUpdatedAt ?? 0;
     if (!keepSettings) {
-      this.perMatch.set(bracket?.perMatch ?? tournament.playersPerMatch);
+      this.perMatch.set(
+        bracket?.stages?.length
+          ? (bracket.perMatch ?? tournament.playersPerMatch)
+          : tournament.playersPerMatch,
+      );
       this.thirdPlaceEnabled.set(bracket ? !!bracket.thirdPlaceEnabled : true);
       this.advancePerMatch.set(bracket?.advance ?? 1);
     }
@@ -274,6 +276,11 @@ export class ForgeStore {
     if (this.tournamentMode) return;
     this.members.update((list) => list.filter((_, i) => i !== index));
     this.persist();
+  }
+
+  setPerMatch(size: number): void {
+    this.perMatch.set(size);
+    this.advancePerMatch.set(clampAdvance(this.advancePerMatch(), size));
   }
 
   startBracket(): void {

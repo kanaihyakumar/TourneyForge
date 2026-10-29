@@ -17,6 +17,7 @@ import { LiveChatService } from '../../core/services/live-chat.service';
 import { OrganizerService } from '../../core/services/organizer.service';
 import { TournamentService } from '../../core/services/tournament.service';
 import { AccountActions } from '../../layout/account-actions';
+import { NewGamesBanner } from '../../layout/new-games-banner';
 import { PageHeader } from '../../layout/page-header';
 import { Banner } from '../../shared/ui/banner';
 import { Card } from '../../shared/ui/card';
@@ -46,6 +47,7 @@ const REFRESH_GAP_MS = 15000;
     AccountActions,
     Card,
     Banner,
+    NewGamesBanner,
     Tabs,
     TournamentForm,
     TournamentList,

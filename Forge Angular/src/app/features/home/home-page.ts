@@ -17,6 +17,7 @@ import { ContactLine } from '../../layout/contact-line';
 import { PageHeader } from '../../layout/page-header';
 import { PillButton } from '../../shared/ui/pill-button';
 import { MatchesModal } from '../../shared/tournament/matches-modal';
+import { NewGamesBanner } from '../../layout/new-games-banner';
 import { InstallApp } from '../../layout/install-app';
 import { HowTo } from '../help/how-to';
 import { HowItWorks } from './how-it-works';
@@ -38,6 +39,7 @@ import { TournamentDetailModal } from './tournament-detail-modal';
     HowItWorks,
     HowTo,
     InstallApp,
+    NewGamesBanner,
     MatchesModal,
     TournamentDetailModal,
   ],

@@ -97,9 +97,6 @@ export class ForgePage {
       label: `${i + 1} ${i === 0 ? 'player' : 'players'}`,
     })),
   );
-  protected readonly tableSizeOptions = computed(() =>
-    this.store.tableSizeOptions().map((n) => ({ value: String(n), label: `${n} players` })),
-  );
   protected readonly replacing = signal<ParticipantTarget | null>(null);
   protected readonly syncFailed = computed(() => this.store.syncStatus().startsWith('⚠️'));
 

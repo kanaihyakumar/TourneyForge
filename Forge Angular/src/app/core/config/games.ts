@@ -1,4 +1,5 @@
 import { MixedGameEntry, SelectOption } from '../models/models';
+import { isNewGame } from './new-games';
 
 export interface GameFormat {
   id: string;
@@ -481,8 +482,12 @@ export const CUSTOM_GAME_DEF: GameDef = {
 
 export const MIXED_GAME = '__mixed__';
 
+function gameLabel(name: string): string {
+  return isNewGame(name) ? `${name} ✨ NEW` : name;
+}
+
 export const GAME_OPTIONS: SelectOption[] = [
-  ...GAME_CATALOG.map((g) => ({ value: g.name, label: g.name })),
+  ...GAME_CATALOG.map((g) => ({ value: g.name, label: gameLabel(g.name) })),
   { value: MIXED_GAME, label: '🎲 Mixed (several games)' },
   { value: CUSTOM_GAME, label: 'Other (type a name)' },
 ];
@@ -525,13 +530,21 @@ export function resolveFormat(
   );
 }
 
-export function roundSizeOptions(game: GameDef | null, current: number): number[] {
-  const sizes = game ? game.formats.filter((f) => f.teamSize === 1).map((f) => f.perMatch) : [];
-  return [...new Set([...sizes, current])].sort((a, b) => a - b);
-}
-
 export function individualFormats(game: GameDef): GameFormat[] {
   return game.formats.filter((f) => f.teamSize === 1);
+}
+
+export function formatSelectOptions(formats: GameFormat[]): SelectOption[] {
+  return formats.map((f) => ({ value: f.id, label: f.label }));
+}
+
+export function roundSizeOptions(game: GameDef | null, current: number): SelectOption[] {
+  const formats = game ? individualFormats(game) : [];
+  const sizes = [...new Set([...formats.map((f) => f.perMatch), current])].sort((a, b) => a - b);
+  return sizes.map((size) => {
+    const format = formats.find((f) => f.perMatch === size);
+    return { value: String(size), label: format ? format.label : parseFormat(String(size)).label };
+  });
 }
 
 export const MIX_GAMES: GameDef[] = GAME_CATALOG.filter(
@@ -540,7 +553,7 @@ export const MIX_GAMES: GameDef[] = GAME_CATALOG.filter(
 
 export const MIX_GAME_OPTIONS: SelectOption[] = MIX_GAMES.map((g) => ({
   value: g.name,
-  label: g.name,
+  label: gameLabel(g.name),
 }));
 
 export function newMixedEntry(name: string): MixedGameEntry {

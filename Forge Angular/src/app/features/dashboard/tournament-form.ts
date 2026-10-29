@@ -28,6 +28,7 @@ import {
   CUSTOM_GAME_DEF,
   findGame,
   formatById,
+  formatSelectOptions,
   resolveFormat,
   GAME_OPTIONS,
   GameDef,
@@ -222,9 +223,7 @@ export class TournamentForm {
   protected readonly isMixed = computed(() => this.values().game === MIXED_GAME);
   protected readonly mixedEntries = signal<MixedGameEntry[]>(defaultMixedEntries());
   protected readonly modeOptions = computed(() => toOptions(this.gameDef().modes));
-  protected readonly formatOptions = computed(() =>
-    this.gameDef().formats.map((f) => ({ value: f.id, label: f.label })),
-  );
+  protected readonly formatOptions = computed(() => formatSelectOptions(this.gameDef().formats));
   protected readonly pointFields = POINT_FIELDS;
   private readonly selectedFormat = computed(() =>
     formatById(this.gameDef(), this.values().format ?? ''),

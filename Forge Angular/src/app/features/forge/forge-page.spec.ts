@@ -603,6 +603,70 @@ describe('ForgePage', () => {
     }
   });
 
+  describe('table size from creation', () => {
+    const bubble = (extra: Record<string, unknown> = {}) =>
+      withMeta('t1', {
+        ...tournament,
+        title: 'Bubbles',
+        game: 'Bubble Bay',
+        format: '1v1v1',
+        playersPerMatch: 3,
+        registrations: Array.from({ length: 6 }, (_, i) => ({
+          platoId: 'p' + i,
+          registeredAt: 1,
+        })),
+        ...extra,
+      });
+
+    it('offers the same player types as the create form and builds tables of the chosen size', async () => {
+      current = bubble({
+        registrations: Array.from({ length: 12 }, (_, i) => ({
+          platoId: 'p' + i,
+          registeredAt: 1,
+        })),
+      });
+      const fixture = TestBed.createComponent(ForgePage);
+      const root = fixture.nativeElement as HTMLElement;
+      await fixture.whenStable();
+      const store = fixture.debugElement.injector.get(ForgeStore);
+
+      const labels = (id: string) =>
+        Array.from(root.querySelectorAll(`#${id} option`)).map((o) => o.textContent?.trim());
+      const expected = ['1v1', '1v1v1 (3 players)', '1v1v1v1 (4 players)'];
+      expect(labels('perMatch')).toEqual(expected);
+      expect(store.perMatch()).toBe(3);
+
+      store.setPerMatch(4);
+      store.startBracket();
+      expect(store.stages()[0].matches.map((m) => m.players.length)).toEqual([4, 4, 4]);
+      store.stages()[0].matches.forEach((_, i) => store.pickWinner(0, i, 0));
+      await fixture.whenStable();
+      expect(labels('nextTable')).toEqual(expected);
+      store.setPerMatch(2);
+      store.advance();
+      expect(store.lastStage()!.matches.every((m) => m.players.length <= 2)).toBe(true);
+    });
+
+    it('does not offer a player type choice for team formats', async () => {
+      current = bubble({ teamSize: 2, game: 'Ludo', format: '2v2', playersPerMatch: 2 });
+      const fixture = TestBed.createComponent(ForgePage);
+      await fixture.whenStable();
+      expect(fixture.debugElement.injector.get(ForgeStore).tableSizeOptions()).toEqual([]);
+    });
+
+    it('ignores a different table size left in an older saved bracket', async () => {
+      current = bubble({
+        forgeState: {
+          members: [],
+          bracket: { perMatch: 4, thirdPlaceEnabled: true, advance: 1, stages: [] },
+        },
+      });
+      const fixture = TestBed.createComponent(ForgePage);
+      await fixture.whenStable();
+      expect(fixture.debugElement.injector.get(ForgeStore).perMatch()).toBe(3);
+    });
+  });
+
   describe('replaced participants', () => {
     const edited = (ids: string[], updatedAt: number, forgeStateUpdatedAt = 0) =>
       withMeta('t1', {

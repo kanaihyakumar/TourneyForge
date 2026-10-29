@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import {
   defaultMixedEntries,
   findGame,
+  formatSelectOptions,
   GameSetting,
   individualFormats,
   MIX_GAME_OPTIONS,
@@ -32,7 +33,7 @@ export class MixedGamesEditor {
 
   protected formats(entry: MixedGameEntry): SelectOption[] {
     const game = findGame(entry.game);
-    return game ? individualFormats(game).map((f) => ({ value: f.id, label: f.label })) : [];
+    return game ? formatSelectOptions(individualFormats(game)) : [];
   }
 
   protected settings(entry: MixedGameEntry): GameSetting[] {

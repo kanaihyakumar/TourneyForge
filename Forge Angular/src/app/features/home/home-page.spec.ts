@@ -494,4 +494,24 @@ describe('HomePage', () => {
     expect(card.textContent).toContain('no more typing the website link');
     expect(card.querySelector('button')?.textContent).toContain('Get the app');
   });
+
+  it('announces a newly added game once, until the visitor dismisses it', async () => {
+    localStorage.removeItem('tf_seen_new_games_v1');
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-11-01'));
+    try {
+      const fixture = TestBed.createComponent(HomePage);
+      const root = fixture.nativeElement as HTMLElement;
+      await fixture.whenStable();
+      const banner = root.querySelector('tf-new-games-banner') as HTMLElement;
+      expect(banner.textContent).toContain('New game added');
+      expect(banner.textContent).toContain('Bubble Bay');
+      (banner.querySelector('button') as HTMLElement).click();
+      await fixture.whenStable();
+      expect(banner.textContent).not.toContain('Bubble Bay');
+      expect(localStorage.getItem('tf_seen_new_games_v1')).toContain('Bubble Bay');
+    } finally {
+      clock.mockRestore();
+      localStorage.removeItem('tf_seen_new_games_v1');
+    }
+  });
 });
