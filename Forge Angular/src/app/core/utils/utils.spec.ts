@@ -701,6 +701,13 @@ describe('player count formats', () => {
     expect(findGame('Pool')!.formats.map((f) => f.label)).toEqual(['1v1', '2v2 (teams of 2)']);
     expect(bingo.freeForAll).toBe(true);
     expect(findGame('Chess')!.freeForAll).toBe(false);
+    const bubble = findGame('Bubble Bay')!;
+    expect(bubble.formats.map((f) => [f.label, f.perMatch])).toEqual([
+      ['1v1', 2],
+      ['1v1v1 (3 players)', 3],
+      ['1v1v1v1 (4 players)', 4],
+    ]);
+    expect(bubble.settings).toEqual([{ label: 'Aim Hint', options: ['On', 'Off'] }]);
   });
 
   it('maps a legacy saved 1v1 format onto the current format list', () => {

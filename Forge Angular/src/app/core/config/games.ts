@@ -88,6 +88,12 @@ const RAW_GAMES: RawGame[] = [
     settings: [{ label: 'Ghost Piece', options: ['On', 'Off'] }],
   },
   {
+    name: 'Bubble Bay',
+    modes: [],
+    formats: ['1v1', '1v1v1', '1v1v1v1'],
+    settings: [{ label: 'Aim Hint', options: ['On', 'Off'] }],
+  },
+  {
     name: 'Blitz League',
     modes: [],
     formats: ['1v1'],
