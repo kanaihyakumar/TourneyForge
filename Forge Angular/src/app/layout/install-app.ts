@@ -80,6 +80,31 @@ import { Button } from '../shared/ui/button';
       gap: 12px;
     }
 
+    @media (max-width: 640px) {
+      .card {
+        gap: 10px;
+        padding: 10px 14px;
+        margin-bottom: 16px;
+      }
+
+      .icon {
+        font-size: 1.4rem;
+      }
+
+      .text {
+        min-width: 0;
+      }
+
+      .text span {
+        display: none;
+      }
+
+      .actions {
+        margin-left: auto;
+        gap: 8px;
+      }
+    }
+
     .later {
       @include reset-button;
       background: none;

@@ -20,10 +20,14 @@ export class ForgeImportService {
     this.storage.remove(STORAGE_KEYS.forgeImport);
   }
 
+  select(tournament: Tournament): void {
+    this.storage.setJson(STORAGE_KEYS.forgeImport, this.toImport(tournament));
+  }
+
   async launch(id: string): Promise<void> {
     const tournament = await this.tournaments.get(id);
     if (!tournament) return;
-    this.storage.setJson(STORAGE_KEYS.forgeImport, this.toImport(tournament));
+    this.select(tournament);
     await this.router.navigateByUrl('/forge');
   }
 

@@ -1,4 +1,4 @@
-import { activeNewGames, isNewGame } from '../config/new-games';
+import { activeNewGames, isNewGame, NEW_GAMES } from '../config/new-games';
 import { BracketStage, Organizer } from '../models/models';
 import {
   chunkText,
@@ -163,11 +163,17 @@ describe('tournament utils', () => {
   it('treats a game as new only for a limited time after it was added', () => {
     const day = 86_400_000;
     const added = Date.parse('2026-10-29');
-    expect(isNewGame('Bubble Bay', added + day)).toBe(true);
-    expect(isNewGame('Bubble Bay', added + 31 * day)).toBe(false);
-    expect(isNewGame('Bubble Bay', added - day)).toBe(false);
-    expect(isNewGame('Chess', added + day)).toBe(false);
-    expect(activeNewGames(added + day).map((g) => g.name)).toEqual(['Bubble Bay']);
+    NEW_GAMES.push({ name: 'Sample Game', addedOn: '2026-10-29', tagline: 'Fresh.' });
+    try {
+      expect(isNewGame('Sample Game', added + day)).toBe(true);
+      expect(isNewGame('Sample Game', added + 8 * day)).toBe(false);
+      expect(isNewGame('Sample Game', added - day)).toBe(false);
+      expect(isNewGame('Chess', added + day)).toBe(false);
+      expect(activeNewGames(added + day).map((g) => g.name)).toEqual(['Sample Game']);
+    } finally {
+      NEW_GAMES.pop();
+    }
+    expect(activeNewGames(added + day)).toEqual([]);
   });
 
   it('builds podium rows sorted by place', () => {

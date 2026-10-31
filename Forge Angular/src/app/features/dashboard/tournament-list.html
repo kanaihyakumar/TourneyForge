@@ -71,6 +71,7 @@
               🎯 Current matches
             </button>
           }
+          <a tfButton size="sm" routerLink="/host" [queryParams]="{ id: t.id }">📱 Host mode</a>
           <button type="button" tfButton size="sm" (click)="forge.launch(t.id)">
             🎲 Open in Forge
           </button>

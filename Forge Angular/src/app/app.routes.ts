@@ -17,6 +17,11 @@ export const routes: Routes = [
     title: 'TourneyForge - Match Bracket',
     loadComponent: () => import('./features/forge/forge-page').then((m) => m.ForgePage),
   },
+  {
+    path: 'host',
+    title: 'TourneyForge - Host Mode',
+    loadComponent: () => import('./features/host/host-page').then((m) => m.HostPage),
+  },
   ...LEGAL_DOCS.map((doc) => ({
     path: doc.id,
     title: `TourneyForge - ${doc.title}`,

@@ -5,6 +5,7 @@ import {
   DEFAULT_TIMEZONE,
   FINISHED_NOTICE,
 } from '../../core/config/constants';
+import { RouterLink } from '@angular/router';
 import { Organizer, Tournament } from '../../core/models/models';
 import { AuthService } from '../../core/services/auth.service';
 import { ForgeImportService } from '../../core/services/forge-import.service';
@@ -26,7 +27,7 @@ import { Tag } from '../../shared/ui/tag';
 
 @Component({
   selector: 'tf-tournament-list',
-  imports: [Card, ListRow, StatusBadge, Button, Tag, Segmented, HowTo, InstallApp],
+  imports: [RouterLink, Card, ListRow, StatusBadge, Button, Tag, Segmented, HowTo, InstallApp],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './tournament-list.html',
   styles: `

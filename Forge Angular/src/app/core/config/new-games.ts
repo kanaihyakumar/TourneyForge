@@ -4,15 +4,9 @@ export interface NewGame {
   tagline: string;
 }
 
-export const NEW_GAME_DAYS = 30;
+export const NEW_GAME_DAYS = 7;
 
-export const NEW_GAMES: NewGame[] = [
-  {
-    name: 'Bubble Bay',
-    addedOn: '2026-10-29',
-    tagline: 'Now ready for tournaments - 1v1, 1v1v1 or 1v1v1v1, with Aim Hint on or off.',
-  },
-];
+export const NEW_GAMES: NewGame[] = [];
 
 export function activeNewGames(now = Date.now()): NewGame[] {
   const windowMs = NEW_GAME_DAYS * 86_400_000;

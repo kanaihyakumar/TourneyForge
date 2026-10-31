@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { NEW_GAMES } from '../../core/config/new-games';
 import { Session, Tournament } from '../../core/models/models';
 import { AuthService } from '../../core/services/auth.service';
 import { FirestoreService } from '../../core/services/firestore.service';
@@ -72,6 +73,9 @@ describe('HomePage', () => {
     expect(root.querySelector('tf-winners-marquee')?.textContent).toContain('@Champ');
     expect(root.querySelector('tf-credit-line')?.textContent).toContain('Made with');
     expect(root.querySelector('tf-credit-line')?.textContent).not.toContain('Want to use');
+    expect(root.querySelector('tf-credit-line')?.textContent).toContain(
+      'send Speedy an ✨ aura or a 🎁 gift on Plato',
+    );
     expect(root.querySelector('tf-contact-line')?.textContent).toContain(
       'Want to use TourneyForge for your own group? Contact Speedy on Plato (platoid: Speedy40) or on Discord (👾 speedy_speedy).',
     );
@@ -112,6 +116,8 @@ describe('HomePage', () => {
     expect(marquee.querySelector('.item')?.textContent).toContain('Newer');
     expect(marquee.querySelector('.item')?.textContent).toContain('🎁 2K coins');
     expect(root.querySelector('tf-tour-card tf-podium')?.textContent).toContain('🎁 2K coins');
+    const track = marquee.querySelector('.track') as HTMLElement;
+    expect(parseFloat(track.style.animationDuration)).toBeGreaterThanOrEqual(40);
   });
 
   it('opens the detail modal from a card', async () => {
@@ -495,8 +501,18 @@ describe('HomePage', () => {
     expect(card.querySelector('button')?.textContent).toContain('Get the app');
   });
 
+  it('shows no new game banner when nothing was added recently', async () => {
+    localStorage.removeItem('tf_seen_new_games_v1');
+    const fixture = TestBed.createComponent(HomePage);
+    await fixture.whenStable();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('tf-new-games-banner')?.textContent,
+    ).not.toContain('New game added');
+  });
+
   it('announces a newly added game once, until the visitor dismisses it', async () => {
     localStorage.removeItem('tf_seen_new_games_v1');
+    NEW_GAMES.push({ name: 'Bubble Bay', addedOn: '2026-10-29', tagline: 'Now ready.' });
     const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-11-01'));
     try {
       const fixture = TestBed.createComponent(HomePage);
@@ -510,6 +526,7 @@ describe('HomePage', () => {
       expect(banner.textContent).not.toContain('Bubble Bay');
       expect(localStorage.getItem('tf_seen_new_games_v1')).toContain('Bubble Bay');
     } finally {
+      NEW_GAMES.pop();
       clock.mockRestore();
       localStorage.removeItem('tf_seen_new_games_v1');
     }

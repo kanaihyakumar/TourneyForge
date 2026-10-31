@@ -6,8 +6,8 @@ import { CONTACT_DISCORD_ID, CONTACT_PLATO_ID, DISCORD_ICON } from '../core/conf
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div>
-      Made with <span class="heart">❤️</span> by <span class="handle">Speedy</span> (platoid:
-      {{ platoId }} · {{ discordIcon }} discord: {{ discordId }})
+      Made with <span class="heart">❤️</span> by <span class="handle">Speedy</span>
+      <span class="ids">(platoid: {{ platoId }} · {{ discordIcon }} discord: {{ discordId }})</span>
     </div>
     <div class="thanks">
       Enjoying TourneyForge? Show some love - send Speedy an ✨ aura or a 🎁 gift on Plato. It keeps
@@ -31,6 +31,16 @@ import { CONTACT_DISCORD_ID, CONTACT_PLATO_ID, DISCORD_ICON } from '../core/conf
 
     .handle {
       color: var(--accent-dark);
+    }
+
+    @media (max-width: 640px) {
+      :host {
+        margin-bottom: 16px;
+      }
+
+      .ids {
+        display: none;
+      }
     }
   `,
 })

@@ -3,7 +3,7 @@ import { Tournament } from '../../core/models/models';
 import { PlatoIdPipe } from '../../core/pipes/plato-id.pipe';
 import { podiumRows } from '../../core/utils/tournament';
 
-const SECONDS_PER_ITEM = 7;
+const SECONDS_PER_ITEM = 13;
 const MAX_ITEMS = 12;
 
 @Component({
@@ -197,6 +197,6 @@ export class WinnersMarquee {
   );
 
   protected readonly duration = computed(() =>
-    Math.max(20, this.items().length * SECONDS_PER_ITEM),
+    Math.max(40, this.items().length * SECONDS_PER_ITEM),
   );
 }

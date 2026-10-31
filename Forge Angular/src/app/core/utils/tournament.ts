@@ -113,6 +113,11 @@ export function withPrizes(
   });
 }
 
+export function manageableTournaments(list: Tournament[], session: Session | null): Tournament[] {
+  if (!session) return [];
+  return list.filter((t) => canManage(session, t));
+}
+
 export function sortTournaments(list: Tournament[]): Tournament[] {
   return [...list].sort(
     (a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status] || a.startUTC - b.startUTC,

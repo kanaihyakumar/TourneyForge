@@ -28,6 +28,12 @@
   ],
   "shortcuts": [
     {
+      "name": "Host Mode",
+      "short_name": "Host Mode",
+      "url": "/host?source=pwa-shortcut",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
       "name": "My Dashboard",
       "short_name": "Dashboard",
       "url": "/dashboard?source=pwa-shortcut",

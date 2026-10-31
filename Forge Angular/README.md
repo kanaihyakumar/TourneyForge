@@ -17,6 +17,10 @@ The production build is an installable app (manifest, icons and a service worker
 
 Test it on the production build: `npm run build`, serve `dist/tourney-forge/browser` on localhost or https, and open it in Chrome. Icons live in `public/icons` and the app details in `public/manifest.webmanifest`. Hosting headers for the service worker are in the root `firebase.json`, so deploy with `npm run deploy` (hosting only).
 
+## Host Mode
+
+`/host` (organizers and admins only) is a phone-friendly console for running a live tournament, with a floating side bar on the right to jump between sections: 💬 Messages, 👥 Players (copy all, add, replace), 🔑 Key and registration messages, 🏆 Bracket (start, pick winners, copy match sets) and 🎉 Results with the closing and thank-you messages. A browser or PWA can't float over other apps, so it is meant to be used in split-screen or as a quick app switch. Open it from 📱 Host mode on a tournament card, or from the Host Mode shortcut of the installed app. It reuses the Forge panels, so it stays in sync with the Forge page.
+
 ## Deploy
 
 ```bash

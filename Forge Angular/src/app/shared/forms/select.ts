@@ -39,7 +39,7 @@ import { provideValueAccessor, ValueControl } from './value-control';
 
     @media (max-width: 480px) {
       :host(.compact) {
-        max-width: 98px;
+        max-width: 190px;
       }
 
       :host(.compact) select {

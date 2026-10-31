@@ -22,7 +22,7 @@ import { PageHeader } from '../../layout/page-header';
 import { Banner } from '../../shared/ui/banner';
 import { Card } from '../../shared/ui/card';
 import { TabItem, Tabs } from '../../shared/ui/tabs';
-import { visibleOrganizers } from '../../core/utils/tournament';
+import { manageableTournaments, visibleOrganizers } from '../../core/utils/tournament';
 import { UsageService } from '../../core/services/usage.service';
 import { ThanksNote } from '../../shared/tournament/thanks-note';
 import { AssignModal } from './assign-modal';
@@ -86,8 +86,7 @@ export class DashboardPage {
     loader: async () => {
       const session = this.auth.session();
       const all = await this.tournamentService.list();
-      if (!session || session.role === 'admin') return all;
-      return all.filter((t) => t.organizerId === session.id || t.managerIds.includes(session.id));
+      return session ? manageableTournaments(all, session) : all;
     },
   });
 

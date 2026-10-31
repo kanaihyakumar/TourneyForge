@@ -84,6 +84,7 @@ export const HOW_TO_SLIDES: HowToSlide[] = [
       'Keep “Also generate a 3rd place match (from the two semifinal losers)” ticked if you want one. It has to be set before you start.',
       'Press Start Bracket, then tap the winner of each match. The next round, and the 3rd place match, are generated for you.',
       'Use “Copy this match set” to paste the matchups into the group. Everyone can also follow along with “Current matches” on the tournament card.',
+      'On your phone, tap 📱 Host mode on the tournament card (or the Host Mode shortcut on the installed app). It puts the messages, players, registration key, bracket and results in one screen, so you can copy a message, jump to Plato, paste it and come straight back. Split-screen next to Plato works great too.',
     ],
   },
   {

@@ -13,6 +13,7 @@ import { ToastService } from '../../core/services/toast.service';
 import { TournamentService } from '../../core/services/tournament.service';
 import {
   buildForgeState,
+  chunkText,
   clampAdvance,
   deserializeStages,
   groupUp,
@@ -30,7 +31,7 @@ import {
   toggleWinner,
 } from '../../core/utils/bracket';
 import { entryPerMatch, findGame, roundSizeOptions } from '../../core/config/games';
-import { normalizePlatoId } from '../../core/utils/plato';
+import { formatPlatoId, normalizePlatoId } from '../../core/utils/plato';
 import { computeLeaderboard, scoringGames, standingDetail } from '../../core/utils/scoring';
 import {
   canManage,
@@ -57,6 +58,8 @@ export class ForgeStore {
     this.imported?.members?.length ? [...this.imported.members] : [...DEFAULT_FORGE_MEMBERS],
   );
   readonly tournament = signal<Tournament | null>(null);
+  readonly memberLabels = computed(() => this.members().map(formatPlatoId));
+  readonly memberChunks = computed(() => chunkText(this.memberLabels(), ', '));
   readonly stages = signal<BracketStage[]>([]);
   readonly thirdPlaceEnabled = signal(true);
   readonly perMatch = signal(2);
